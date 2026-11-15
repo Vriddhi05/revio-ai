@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { ChevronLeft, ChevronRight, CircleAlert, Search, SlidersHorizontal, Star, X } from "lucide-react";
+import { ChevronLeft, ChevronRight, CircleAlert, Search, SlidersHorizontal, Sparkles, Star, X } from "lucide-react";
 import SectionHeading from "../../components/ui/SectionHeading";
 import { apiRequest } from "../../lib/api";
 
@@ -21,6 +21,8 @@ export default function ReviewsInboxPage() {
   const [classificationNotice, setClassificationNotice] = useState(false);
   const [deepLinkReview, setDeepLinkReview] = useState("");
   const [filtersReady, setFiltersReady] = useState(false);
+  const [analyzing, setAnalyzing] = useState(false);
+  const [analysisMessage, setAnalysisMessage] = useState("");
 
   const load = useCallback(async () => {
     setLoading(true); setError("");
@@ -57,20 +59,36 @@ export default function ReviewsInboxPage() {
     } catch (cause) { setError(cause.message); }
   }
 
+  async function runAnalysis() {
+    setAnalyzing(true); setAnalysisMessage(""); setError("");
+    try {
+      const result = await apiRequest("/intelligence/analyze?limit=1000", { method: "POST" });
+      setAnalysisMessage(result.analyzed + " analyzed · " + result.skipped_cached + " already current · " + result.provider + " provider");
+      await load();
+      if (selected) setSelected(await apiRequest("/reviews/" + selected.id));
+      window.dispatchEvent(new Event("revio-data-changed"));
+    } catch (cause) {
+      setError(cause.message);
+    } finally {
+      setAnalyzing(false);
+    }
+  }
+
   return <div className="inbox-page">
-    <SectionHeading eyebrow="CUSTOMER VOICE" title="Reviews inbox" description="Search, sort and follow up on reviews from every location." />
-    <div className="inbox-notice"><CircleAlert size={15} /><span>DEMO / SYNTHETIC DATA: all seeded reviews are fictional Indian examples. Sentiment classification is not available yet.</span></div>
+    <SectionHeading eyebrow="CUSTOMER VOICE" title="Reviews inbox" description="Search, sort and follow up on reviews from every location." action={<button className="button button-secondary" type="button" onClick={runAnalysis} disabled={analyzing}><Sparkles size={15} />{analyzing ? "Analyzing…" : "Analyze reviews"}</button>} />
+    <div className="inbox-notice"><CircleAlert size={15} /><span>DEMO / SYNTHETIC DATA: all seeded reviews are fictional Indian examples. Analysis is advisory and should be reviewed by your team.</span></div>
+    {analysisMessage && <div className="analysis-message" role="status">{analysisMessage}</div>}
     <section className="inbox-filters" aria-label="Review filters">
       <label className="search-field"><Search size={17} /><input value={filters.search} onChange={(event) => updateFilter("search", event.target.value)} placeholder="Search reviews or authors" aria-label="Search reviews or authors" /></label>
       <label className="filter-control"><span>Location</span><select value={filters.location_id} onChange={(event) => updateFilter("location_id", event.target.value)}><option value="">All locations</option>{locations.map((location) => <option value={location.id} key={location.id}>{location.name}</option>)}</select></label>
       <label className="filter-control"><span>Rating</span><select value={filters.rating} onChange={(event) => updateFilter("rating", event.target.value)}><option value="">All ratings</option>{[5, 4.5, 4, 3.5, 3, 2.5, 2, 1.5, 1].map((rating) => <option value={rating} key={rating}>{rating} stars</option>)}</select></label>
-      <label className="filter-control"><span>Sentiment</span><select value={filters.sentiment} onChange={(event) => { updateFilter("sentiment", event.target.value); if (event.target.value) setClassificationNotice(true); }}><option value="">Any sentiment</option><option value="positive">Positive</option><option value="mixed">Mixed</option><option value="negative">Negative</option></select></label>
+      <label className="filter-control"><span>Sentiment</span><select value={filters.sentiment} onChange={(event) => { updateFilter("sentiment", event.target.value); if (event.target.value) setClassificationNotice(true); }}><option value="">Any sentiment</option><option value="positive">Positive</option><option value="neutral">Neutral</option><option value="negative">Negative</option></select></label>
       <label className="filter-control"><span>From</span><input type="date" value={filters.date_from} onChange={(event) => updateFilter("date_from", event.target.value)} /></label>
       <label className="filter-control"><span>To</span><input type="date" value={filters.date_to} onChange={(event) => updateFilter("date_to", event.target.value)} /></label>
       <label className="filter-control"><span>Status</span><select value={filters.status} onChange={(event) => updateFilter("status", event.target.value)}>{STATUSES.map(([value, label]) => <option value={value} key={value}>{label}</option>)}</select></label>
       <label className="filter-control"><span>Sort by</span><select value={filters.sort} onChange={(event) => updateFilter("sort", event.target.value)}><option value="newest">Newest</option><option value="priority">Priority</option></select></label>
     </section>
-    {classificationNotice && <div className="classification-note" role="status">Reviews have not been classified yet. This filter will return results once sentiment analysis is available.<button type="button" onClick={() => { setClassificationNotice(false); updateFilter("sentiment", ""); }}>Dismiss</button></div>}
+    {classificationNotice && <div className="classification-note" role="status">Only reviews with saved analysis appear in this sentiment filter. Use Analyze reviews to process new reviews.<button type="button" onClick={() => { setClassificationNotice(false); updateFilter("sentiment", ""); }}>Dismiss</button></div>}
     {error && <div className="inline-error" role="alert"><strong>Reviews could not be loaded.</strong> {error} <button type="button" onClick={load}>Retry</button></div>}
 
     <section className={`inbox-content${selected ? " has-selection" : ""}`} aria-busy={loading}>
@@ -79,7 +97,7 @@ export default function ReviewsInboxPage() {
         {loading ? <div className="inbox-loading" role="status"><span /><span /><span /><span /></div> : error && !data ? <div className="inbox-empty"><span className="inbox-empty-icon"><Search size={19} /></span><h2>Inbox unavailable</h2><p>{error}</p><button className="button button-secondary" type="button" onClick={load}>Try again</button></div> : !data?.items.length ? <div className="inbox-empty"><span className="inbox-empty-icon"><Search size={19} /></span><h2>No reviews found</h2><p>Try changing your search or filters. You can also import a CSV from the Overview.</p></div> : <>
           <div className="review-list">{data.items.map((review) => <button className={`review-list-item${selected?.id === review.id ? " selected" : ""}`} type="button" key={review.id} onClick={() => chooseReview(review)}>
             <div className="review-item-top"><span className="review-author">{review.author_name || "Anonymous"}</span><span className="review-date">{dateLabel(review.review_date)}</span></div>
-            <div className="review-item-meta"><Stars rating={review.rating} /><span>{review.location.name}</span><span className="review-source">{review.source_name}</span></div>
+            <div className="review-item-meta"><Stars rating={review.rating} /><span>{review.location.name}</span><span className="review-source">{review.source_name}</span>{review.analysis && <span className={"sentiment-pill sentiment-" + review.analysis.sentiment}>{review.analysis.sentiment}</span>}</div>
             <p>{review.review_text}</p>
             <div className="review-item-bottom"><span className={`status-pill status-${review.status}`}>{review.status.replaceAll("_", " ")}</span><span className={`origin-pill${review.is_synthetic ? " origin-synthetic" : ""}`}>{review.is_synthetic ? "DEMO / SYNTHETIC DATA" : "CSV import"}</span></div>
           </button>)}</div>
@@ -90,6 +108,13 @@ export default function ReviewsInboxPage() {
         {selected ? <><div className="detail-heading"><div><p className="eyebrow">REVIEW DETAIL</p><h2>Customer feedback</h2></div><button type="button" className="detail-close" aria-label="Close review details" onClick={() => setSelected(null)}><X size={17} /></button></div>
           <div className="detail-rating"><Stars rating={selected.rating} /><span className={`status-pill status-${selected.status}`}>{selected.status.replaceAll("_", " ")}</span></div>
           <blockquote>{selected.review_text}</blockquote>
+          {selected.analysis ? <section className="review-analysis-card" aria-label="Saved review analysis">
+            <div className="analysis-card-heading"><div><p className="eyebrow">REVIEW INTELLIGENCE</p><strong>{selected.analysis.sentiment}<small>{Math.round(selected.analysis.confidence * 100)}% {selected.analysis.confidence_kind.includes("rule_strength") ? "rule strength" : "model score"}</small></strong></div><span className={"severity-pill severity-" + selected.analysis.severity}>{selected.analysis.severity}</span></div>
+            <p className="analysis-model-meta">{selected.analysis.provider} · {selected.analysis.model_name} · {selected.analysis.language} / {selected.analysis.script}</p>
+            <p className="analysis-reason">{selected.analysis.urgency_reason}</p>
+            {selected.analysis.categories.length ? <div className="analysis-categories">{selected.analysis.categories.map((item) => <article className="analysis-category" key={item.category}><strong>{item.category.replaceAll("_", " ")}</strong><span>{item.evidence}</span><small>{item.method === "interpretable_multilingual_rules" ? "Exact phrase rule match" : "Semantic similarity · excerpt is contextual"}</small></article>)}</div> : <p className="analysis-no-categories">No complaint category matched the selected analysis method.</p>}
+            <div className="analysis-next-step"><strong>Suggested next step</strong><p>{selected.analysis.recommended_action}</p></div>
+          </section> : <div className="analysis-pending">No saved analysis for this review yet. Use Analyze reviews to classify workspace feedback.</div>}
           <dl className="detail-fields"><div><dt>Customer</dt><dd>{selected.author_name || "Anonymous"}</dd></div><div><dt>Review date</dt><dd>{dateLabel(selected.review_date)}</dd></div><div><dt>Location</dt><dd>{selected.location.name}</dd></div><div><dt>Source</dt><dd>{selected.source_name}</dd></div><div><dt>Record origin</dt><dd>{selected.import_metadata.record_origin}</dd></div><div><dt>Import file</dt><dd>{selected.import_metadata.filename || "—"}</dd></div><div><dt>Imported</dt><dd>{new Date(selected.import_metadata.imported_at).toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" })}</dd></div><div><dt>External review ID</dt><dd>{selected.external_review_id || "—"}</dd></div></dl>
           <label className="status-update"><span>Update status</span><select value={selected.status} onChange={(event) => updateStatus(event.target.value)}><option value="new">New</option><option value="needs_attention">Needs attention</option><option value="resolved">Resolved</option></select></label>
         </> : <div className="detail-placeholder"><span className="detail-placeholder-icon"><Star size={19} /></span><h2>Select a review</h2><p>Choose a review to see its full text, source and import details.</p></div>}

@@ -5,7 +5,10 @@ import { Bell, ChevronDown, Menu } from "lucide-react";
 
 export default function Topbar() {
   const pathname = usePathname();
-  const currentPage = pathname === "/reviews" ? "Reviews inbox" : pathname === "/" ? "Overview" : "Workspace";
+  const currentPage = pathname === "/reviews" ? "Reviews inbox"
+    : pathname === "/crisis-monitor" ? "Crisis monitor"
+      : pathname === "/locations" ? "Location analytics"
+        : pathname === "/" ? "Overview" : "Workspace";
   return (
     <header className="topbar">
       <button className="mobile-menu" aria-label="Open navigation" type="button"><Menu size={20} /></button>
