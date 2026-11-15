@@ -1,0 +1,17 @@
+:root {
+  color-scheme: light;
+  --cream: #F1EEE8;
+  --teal: #0E4F4A;
+  --coral: #FF6F5E;
+  --paper: #FAF9F6;
+  --white: #FFFFFF;
+  --ink: #232923;
+  --muted: #7A807A;
+  --line: #E5E2DB;
+  --line-strong: #D8D4CB;
+  --teal-tint: #E7EFEC;
+  --coral-tint: #FFF0ED;
+  --font-editorial: "Iowan Old Style", "Palatino Linotype", "Book Antiqua", Georgia, serif;
+  --font-ui: "Aptos", "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+  --sidebar-width: 252px;
+}
