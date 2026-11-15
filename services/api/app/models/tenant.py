@@ -23,3 +23,6 @@ class Tenant(Base):
     )
 
     memberships: Mapped[list["Membership"]] = relationship(back_populates="tenant", cascade="all, delete-orphan")
+    locations: Mapped[list["Location"]] = relationship(back_populates="tenant", cascade="all, delete-orphan")
+    reviews: Mapped[list["Review"]] = relationship(back_populates="tenant", cascade="all, delete-orphan")
+    import_jobs: Mapped[list["ReviewImportJob"]] = relationship(back_populates="tenant", cascade="all, delete-orphan")

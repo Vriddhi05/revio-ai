@@ -1,4 +1,7 @@
+"use client";
+
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import {
   Activity,
   BarChart3,
@@ -12,8 +15,8 @@ import {
 } from "lucide-react";
 
 const navigation = [
-  { label: "Overview", href: "/", icon: LayoutDashboard, active: true },
-  { label: "Reviews inbox", href: "/reviews", icon: MessageSquareText, disabled: true },
+  { label: "Overview", href: "/", icon: LayoutDashboard },
+  { label: "Reviews inbox", href: "/reviews", icon: MessageSquareText },
   { label: "Response studio", href: "/response-studio", icon: Sparkles, disabled: true },
   { label: "Crisis monitor", href: "/crisis-monitor", icon: ShieldAlert, disabled: true },
   { label: "Location analytics", href: "/locations", icon: BarChart3, disabled: true },
@@ -29,6 +32,7 @@ function BrandMark() {
 }
 
 export default function Sidebar() {
+  const pathname = usePathname();
   return (
     <aside className="sidebar">
       <div className="sidebar-brand"><BrandMark /><span className="sidebar-edition">INTELLIGENCE</span></div>
@@ -41,7 +45,8 @@ export default function Sidebar() {
 
       <div className="nav-section-label">WORKSPACE</div>
       <nav className="primary-nav" aria-label="Primary navigation">
-        {navigation.map(({ label, href, icon: Icon, active, disabled }) => {
+        {navigation.map(({ label, href, icon: Icon, disabled }) => {
+          const active = pathname === href;
           const content = <><Icon size={18} strokeWidth={1.8} /><span>{label}</span>{disabled && <span className="nav-soon">SOON</span>}</>;
           return disabled ? (
             <div className="nav-item nav-item-disabled" key={label} aria-disabled="true" title="Planned for a later milestone">{content}</div>
