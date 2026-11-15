@@ -2,11 +2,13 @@
 
 Reputation intelligence for teams that care about every customer conversation.
 
-## Current milestone: Review ingestion and inbox
+## Current milestone: AI review intelligence
 
-REVIO now supports CSV review preview and import, persistent tenant-scoped review storage, duplicate detection, a searchable and filterable Reviews Inbox, review details and status updates, and database-backed Overview metrics. The API seeds 45 clearly labeled DEMO / SYNTHETIC DATA reviews across Jaipur, Rajasthan, India; Chandigarh, India; and Ludhiana, Punjab, India. The fictional examples use Indian customer names and cover restaurants, cafes, hotels, fitness centres, retail, and food delivery. No live review integrations are connected.
+REVIO supports CSV review preview and import, persistent tenant-scoped review storage, duplicate detection, a searchable Reviews Inbox, review details and status updates, database-backed Overview metrics, persisted multilingual review analysis, signal-only crisis monitoring, and location analytics. The API seeds 45 clearly labeled DEMO / SYNTHETIC DATA reviews across Jaipur, Rajasthan, India; Chandigarh, India; and Ludhiana, Punjab, India. The fictional examples use Indian customer names and cover restaurants, cafes, hotels, fitness centres, retail, and food delivery. No live review integrations are connected.
 
-Sentiment classification, RAG, response generation, and crisis monitoring are not implemented in this milestone. The sentiment filter is present but returns no matches until reviews are classified. Urgency is currently a simple rating-based review status/priority rule, not an AI assessment.
+Review analysis stores positive, neutral, or negative sentiment; confidence metadata; heuristic language and script; multi-label complaint categories with text evidence; and explainable urgency with a recommended action. The local default uses a deterministic multilingual phrase baseline and identifies itself as fallback/rules output. Optional pinned MuRIL sentiment inference and multilingual semantic aspect similarity are available after installing optional AI requirements. See the model selection and limitations report in docs/model-selection.md.
+
+The Crisis Monitor identifies configured changes and recurrence patterns from persisted analyses. It clearly labels them as unconfirmed signals. Location analytics are calculated from stored reviews and current analysis records. Results are cached by tenant, review text hash, and model pipeline version. RAG, ChromaDB ingestion, LangGraph response generation, human response approval, and live review-source integrations remain future milestones.
 
 ## Requirements
 
@@ -64,7 +66,22 @@ All workspace endpoints accept `X-Tenant-Slug`; the local demo client uses `revi
 
 CSV imports require `review_text` and `rating`. Optional columns include `author_name`, `review_date`, `location`, `source`, `external_review_id`, and `is_synthetic`. UTF-8 CSV files up to 10 MB and 10,000 rows are supported. Ratings must be between 1 and 5 in half-star increments. The importer validates the full file, shows an upload preview, and uses tenant-scoped review fingerprints to prevent repeated rows from being stored twice. The downloadable sample contains 45 fictional Indian reviews, including Indian English, Hinglish, and Hindi text; all rows are marked synthetic.
 
+## AI model configuration and new APIs
+
+The API starts without model downloads. The default sentiment and aspect modes are deterministic multilingual rules. To request local MuRIL sentiment and Sentence Transformers semantic aspect inference, install services/api/requirements-ai.txt and set REVIO_SENTIMENT_PROVIDER=transformers and REVIO_ASPECT_PROVIDER=sentence-transformers in services/api/.env. On first inference, pinned model checkpoints are downloaded and cached. Missing dependencies, download failures, and inference errors use the labeled fallback.
+
+The Milestone 3 endpoints are:
+
+- POST /api/v1/intelligence/analyze — analyze a tenant's reviews in a batch; use the force query option to recompute the configured model version.
+- GET /api/v1/intelligence/status — inspect model mode and optional dependency availability.
+- GET /api/v1/crisis/alerts — read signal alerts and tenant-scoped supporting review references.
+- POST /api/v1/crisis/scan — scan the configured time window for negative rises, recurring complaint themes, and severe cross-location patterns.
+- PATCH /api/v1/crisis/alerts/{alert_id}/status — acknowledge or resolve a signal.
+- GET /api/v1/analytics/location-intelligence — compare stored ratings, sentiment, complaint categories, urgency, and negative trends by location.
+
 ## Checks
+
+The separate manually labeled evaluation corpus is data/evaluation/indian_review_intelligence.jsonl. From services/api, run scripts/evaluate_intelligence.py with the service virtual environment's Python interpreter and write its JSON output under docs/evaluation. Add the --semantic option only when the optional model is installed. The report measures the actual local configuration and does not use model-card scores.
 
 From the repository root, run the backend tests, then the frontend checks:
 

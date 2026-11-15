@@ -1,0 +1,164 @@
+{
+  "dataset": "data/evaluation/indian_review_intelligence.jsonl",
+  "dataset_size": 36,
+  "hand_labeled": true,
+  "sentiment": {
+    "provider": "transformers",
+    "model_name": "airzipm/sentiment-analysis-muril-v2",
+    "model_version": "e3f3404276e85565d38649d5a4f35f58b1f255b7",
+    "configured_mode": "transformers",
+    "pipeline_version": "airzipm/sentiment-analysis-muril-v2@e3f3404276e85565d38649d5a4f35f58b1f255b7|aspects=multilingual-rules@v2|urgency=revio-urgency@v1",
+    "accuracy": 0.6667,
+    "per_class_precision_recall_f1": {
+      "positive": {
+        "precision": 0.6154,
+        "recall": 0.8889,
+        "f1": 0.7273
+      },
+      "neutral": {
+        "precision": 1.0,
+        "recall": 0.1667,
+        "f1": 0.2857
+      },
+      "negative": {
+        "precision": 0.6667,
+        "recall": 0.9333,
+        "f1": 0.7778
+      }
+    },
+    "macro_f1": 0.5969,
+    "confusion_matrix_rows_actual_columns_predicted": {
+      "positive": {
+        "positive": 8,
+        "neutral": 0,
+        "negative": 1
+      },
+      "neutral": {
+        "positive": 4,
+        "neutral": 2,
+        "negative": 6
+      },
+      "negative": {
+        "positive": 1,
+        "neutral": 0,
+        "negative": 14
+      }
+    },
+    "per_language_group": {
+      "Indian English": {
+        "sample_count": 12,
+        "accuracy": 0.75,
+        "mean_rule_or_model_score": 0.9903
+      },
+      "Hinglish Roman": {
+        "sample_count": 8,
+        "accuracy": 0.625,
+        "mean_rule_or_model_score": 0.9406
+      },
+      "Hindi Devanagari": {
+        "sample_count": 8,
+        "accuracy": 0.75,
+        "mean_rule_or_model_score": 0.9921
+      },
+      "Mixed scripts": {
+        "sample_count": 8,
+        "accuracy": 0.5,
+        "mean_rule_or_model_score": 0.9618
+      }
+    },
+    "latency_ms": {
+      "median": 42.698,
+      "p95": 163.579,
+      "measurement": "per-record wall-clock classification call in the current local environment"
+    }
+  },
+  "aspects": {
+    "provider": "interpretable_rules",
+    "model_name": "multilingual keyword rules v1",
+    "model_version": "v2",
+    "macro_f1": 0.8817,
+    "micro_precision_recall_f1": {
+      "precision": 1.0,
+      "recall": 0.7838,
+      "f1": 0.8788
+    },
+    "per_category_precision_recall_f1": {
+      "billing_refunds": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0
+      },
+      "cleanliness_hygiene": {
+        "precision": 1.0,
+        "recall": 0.2857,
+        "f1": 0.4444
+      },
+      "customer_support": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0
+      },
+      "delivery_order_accuracy": {
+        "precision": 1.0,
+        "recall": 0.8,
+        "f1": 0.8889
+      },
+      "facilities_maintenance": {
+        "precision": 1.0,
+        "recall": 0.6667,
+        "f1": 0.8
+      },
+      "food_product_quality": {
+        "precision": 1.0,
+        "recall": 0.7,
+        "f1": 0.8235
+      },
+      "packaging": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0
+      },
+      "pricing_value": {
+        "precision": 1.0,
+        "recall": 0.75,
+        "f1": 0.8571
+      },
+      "reservations_booking": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0
+      },
+      "staff_service": {
+        "precision": 1.0,
+        "recall": 0.8333,
+        "f1": 0.9091
+      },
+      "upi_payment": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0
+      },
+      "waiting_time": {
+        "precision": 1.0,
+        "recall": 0.75,
+        "f1": 0.8571
+      }
+    },
+    "warning": null
+  },
+  "urgency": {
+    "critical_issue_recall": 1.0,
+    "critical_false_positive_rate": 0.0,
+    "critical_true_positive": 1,
+    "critical_false_positive": 0,
+    "critical_false_negative": 0,
+    "critical_true_negative": 35
+  },
+  "limitations": [
+    "This is a small, manually labeled development set, not a representative sample of Indian customer reviews.",
+    "Labels are single-annotator gold labels; mixed and sarcastic language can be ambiguous.",
+    "Confidence and rule-strength values are not calibrated probabilities.",
+    "Measurements apply only to this local environment and the model/provider recorded above.",
+    "The optional semantic approach was only run if explicitly requested; no unavailable model result is imputed."
+  ]
+}

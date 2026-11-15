@@ -1,6 +1,40 @@
 from datetime import date, datetime
+from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
+
+
+class AspectOut(BaseModel):
+    category: Literal[
+        "staff_service", "waiting_time", "billing_refunds", "upi_payment", "food_product_quality",
+        "cleanliness_hygiene", "facilities_maintenance", "reservations_booking",
+        "delivery_order_accuracy", "packaging", "pricing_value", "customer_support",
+    ]
+    confidence: float = Field(ge=0, le=1)
+    method: str
+    evidence: str
+
+
+class ReviewAnalysisOut(BaseModel):
+    id: str
+    sentiment: Literal["positive", "negative", "neutral"]
+    confidence: float = Field(ge=0, le=1)
+    confidence_kind: str
+    provider: str
+    model_name: str
+    model_revision: str
+    language: str
+    script: str
+    language_method: str
+    categories: list[AspectOut]
+    aspect_provider: str
+    severity: Literal["low", "medium", "high", "critical"]
+    urgency_confidence: float = Field(ge=0, le=1)
+    urgency_reason: str
+    recommended_action: str
+    evidence: list[str]
+    latency_ms: float
+    analyzed_at: datetime
 
 
 class RowIssueOut(BaseModel):
@@ -74,6 +108,7 @@ class ReviewOut(BaseModel):
     sentiment: str | None
     is_synthetic: bool
     import_metadata: ReviewImportMetadataOut
+    analysis: ReviewAnalysisOut | None = None
 
     model_config = ConfigDict(from_attributes=True)
 

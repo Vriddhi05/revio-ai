@@ -40,3 +40,6 @@ class Review(Base):
     tenant: Mapped["Tenant"] = relationship(back_populates="reviews")
     location: Mapped["Location"] = relationship(back_populates="reviews")
     import_job: Mapped["ReviewImportJob | None"] = relationship(back_populates="reviews")
+    analysis_records: Mapped[list["ReviewAnalysis"]] = relationship(
+        back_populates="review", cascade="all, delete-orphan", order_by="ReviewAnalysis.created_at.desc()"
+    )

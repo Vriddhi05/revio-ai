@@ -1,31 +1,59 @@
-# REVIO technical report — Milestone 2
+# REVIO technical report — Milestone 3
 
 ## Implemented
 
-- Preserved the approved JavaScript-only Next.js shell, editorial serif headings, clean sans-serif controls, responsive layout, and REVIO brand palette.
-- Connected Overview cards, location list, attention list, and 30-day review trend to SQL-backed API aggregates.
-- Added CSV upload, full-file preview validation, accepted/rejected counts, issue summaries, repeated-review detection, and persistent import job status.
-- Added SQLAlchemy review, tenant location, and import job models with Alembic migration `0002_review_ingestion`.
-- Added tenant-scoped, paginated review search/filter/sort and detail/status APIs. The client inbox supports location, rating, sentiment, date, status, and sort filters plus review detail metadata.
-- Localized the 45-review fixture to fictional Indian customers and businesses across Jaipur, Rajasthan, India; Chandigarh, India; and Ludhiana, Punjab, India. Reviews span restaurants/cafes, hotels, fitness centres, retail, and food delivery, with Indian English, Hinglish, and Hindi. Every row is marked `is_synthetic=true` and labeled DEMO / SYNTHETIC DATA in the product.
-- Updated startup seeding to synchronize the managed demo fixture in place, refresh existing seeded records and locations, preserve unrelated CSV imports, and retain repeat-startup idempotency without a new migration.
-- Updated README local setup, API, data boundary, and test instructions.
+- Added tenant-scoped persisted review analyses with input hashes, current/history versions, sentiment, confidence type, model/provider/revision, heuristic language and script, multi-label categories, text evidence, severity, reason, recommended action, latency, and timestamps.
+- Added Alembic migration 0003 for review analyses and crisis alerts. Existing review, tenant, and location records remain in place.
+- Added batch analysis with idempotent caching by tenant, review content, and the configured sentiment/aspect/urgency pipeline version. A force request recomputes the configured version.
+- Added lazy, optional MuRIL sentiment inference and a deterministic English/Hinglish/Hindi fallback. The fallback identifies itself in every result; its score is a rule-strength indicator, not a calibrated probability.
+- Added an interpretable phrase-match aspect baseline with exact text evidence and an optional multilingual MiniLM sentence-similarity approach. Semantic similarity scores are not presented as trained classifier probabilities; excerpts are contextual, not token-level explanations.
+- Added explainable Low, Medium, High, and Critical urgency. A one-star rating alone yields at most Medium. Critical labels are allegations requiring human verification.
+- Added configurable rolling negative-rate, recurring-location, repeated-customer, and cross-location signal detection. Signals preserve supporting review references and acknowledgment state, and are labeled unconfirmed until a person verifies them.
+- Added tenant-scoped location analytics calculated from stored reviews and saved current analyses.
+- Enabled Crisis Monitor and Location Analytics navigation and added analysis details to the existing Inbox without changing the approved REVIO visual identity.
+- Added a separate fictional 36-row manually labeled evaluation set, a reproducible metrics script, model selection notes, and the actual fallback evaluation report.
+- Preserved the 45 fictional Indian reviews and three demo locations. No RAG, ChromaDB ingestion, LangGraph response generation, or live review-source integrations were added.
 
-## Current behavior and limits
+## Model selection and limits
 
-- SQLite is used for local development; Alembic and SQLAlchemy retain the intended PostgreSQL migration path.
-- Import jobs run synchronously in the API process. Queue-based scaling is deferred; Redis and Celery are not present.
-- Tenant scope is selected with `X-Tenant-Slug`. The local demo workspace is safe for demonstration, but production authentication and authorization remain future work.
-- Review urgency is assigned by rating (`1–2` needs attention, `3` medium priority); it is not an AI urgency assessment.
-- Sentiment fields and filters are wired, but classification is not implemented in this milestone.
-- No RAG, ChromaDB, Sentence Transformers, LangGraph, response generation, crisis monitoring, or live review-source integrations are implemented.
+MuRIL is the optional selected sentiment model because its card explicitly names English, Hindi, and Hinglish and lists an MIT license. The card describes 0.2B F32 parameters and warns about smaller Hindi/Hinglish training data, variable Roman spellings, and lack of review-domain evaluation. Cardiff NLP XLM-R includes Hindi but has no explicit license shown on its card and its repository reports 2.23 GB including both PyTorch and TensorFlow weights. The optional aspect approach uses an Apache-2.0 multilingual MiniLM sentence embedding model, not a task-trained complaint classifier. Details and source links are in docs/model-selection.md.
+
+For verification, the optional `requirements-ai.txt` stack was installed into the local API virtual environment and the pinned MuRIL checkpoint was downloaded to the user cache. These environment-only packages and weights are not committed. MuRIL was evaluated on the separate 36-example fictional labeled set; its full output is in `docs/evaluation/milestone-3-muril-evaluation.json`. The optional MiniLM semantic aspect path was not benchmarked. The product default remains the deterministic fallback and interpretable aspect rules.
+
+## Evaluation results
+
+The report at docs/evaluation/milestone-3-evaluation.json was generated by running the current local fallback against 36 separate hand-labeled fictional examples:
+
+- Sentiment accuracy: 63.89%; macro F1: 65.35%.
+- Per-class precision / recall / F1: positive 72.73 / 88.89 / 80.00%; neutral 47.06 / 66.67 / 55.17%; negative 87.50 / 46.67 / 60.87%.
+- Accuracy by labeled group: Indian English 83.33% (12 examples), Roman Hinglish 75.00% (8), Hindi Devanagari 50.00% (8), and mixed scripts 37.50% (8).
+- Aspect rules: micro precision 100.00%, recall 78.38%, F1 87.88%; macro category F1 88.17%.
+- Critical-signal recall: 1/1; false-positive rate: 0/35. One critical example is far too small to support a safety-performance claim.
+- Local deterministic sentiment call latency: median 0.018 ms and p95 0.052 ms. These timing results do not represent transformer inference.
+
+This is a small single-annotator development set. Sarcasm, mixed sentiment, and short Hindi/Hinglish phrasing are ambiguous; the scores are not production guarantees. In particular, the current fallback has weak negative recall and mixed-script accuracy. The evaluation is included to expose that limitation, not to call the fallback a reliable multilingual model.
+
+## MuRIL comparison
+
+The pinned `airzipm/sentiment-analysis-muril-v2` checkpoint was run locally on CPU against the same 36 manually labeled fictional examples. It achieved 66.67% accuracy and 59.69% macro F1, compared with the deterministic fallback's 63.89% accuracy and 65.35% macro F1. MuRIL class F1 was 72.73% positive, 28.57% neutral, and 77.78% negative; neutral recall was 16.67%. Group accuracy was 75.00% Indian English (12), 62.50% Roman Hinglish (8), 75.00% Hindi Devanagari (8), and 50.00% mixed scripts (8). Per-record local latency was 42.698 ms median and 163.579 ms p95 on this run. The model's high softmax scores are not calibrated probabilities.
+
+This small evaluation does not establish that MuRIL is generally better: its accuracy is slightly higher, but its macro F1 is lower and its neutral recall is poor. The current default remains the fallback pending more representative labels, error analysis, and calibration. Do not interpret these measurements as production performance.
+
+## Configuration
+
+- Default local settings use the deterministic fallback and multilingual phrase rules; API startup does not download weights.
+- Optional inference can be requested with REVIO_SENTIMENT_PROVIDER=transformers and REVIO_ASPECT_PROVIDER=sentence-transformers in services/api/.env after installing services/api/requirements-ai.txt.
+- Model download and inference failures use an explicit fallback output and warning.
+- Crisis windows and sample thresholds are configurable in services/api/.env.
+- Queue-backed scaling is deferred; processing remains synchronous in the API process without Redis or Celery.
+- Tenant selection remains the demo-safe X-Tenant-Slug mechanism; production authentication is future work.
 
 ## Verification
 
-- Backend test suite: 19 passed. It verifies the three exact Indian demo locations, 45 fictional rows, rating and priority variation, distinct fictional customer names, Hindi/Hinglish examples, and idempotent replacement of the previous synthetic seed. The current environment reports one Starlette deprecation warning related to its TestClient/httpx integration.
+- Backend tests: 30 passed. One existing Starlette/httpx TestClient deprecation warning remains.
 - Frontend ESLint: passed.
-- Next.js production build: passed.
-- Live FastAPI checks: `/health`, CSV preview/import, duplicate re-import, import status, review search/list/detail, analytics, and location listing passed. The temporary verification tenant and its records were removed afterward.
-- Production frontend returned HTTP 200 for Overview and Reviews Inbox routes. Port 3000 was already occupied, so the production server was run on port 3100 for this check.
-- Interactive browser/screenshot review was not completed because computer-use approval timed out; production routes and API workflows were verified over HTTP instead.
-- Security review in this milestone focused on avoiding committed secrets and untrusted CSV persistence issues; it is not a general security certification.
+- Next.js production build: passed with Overview, Reviews, Crisis Monitor, and Location Analytics routes.
+- Fresh FastAPI process on port 8002: `/health` returned `{"status":"ok","database":"ok"}`; Alembic reports `0003_review_intelligence (head)`; tenant-scoped review and location APIs returned 45 reviews, saved analyses, and all three Indian locations.
+- Production frontend on port 3100 was opened in Chrome. Overview rendered the stored 45-review dashboard and three Indian locations; Reviews Inbox rendered all 45 fictional records, sentiment labels, and a populated detail panel; Crisis Monitor completed a scan of 45 reviews and reported zero current patterns. No application error was visible in these views. Browser DevTools console output was not captured.
+- Live analysis used the configured deterministic fallback. The MuRIL offline evaluation above is a separate measurement and did not change the demo database or default provider.
+- A successful build or this evaluation is not a security certification.
