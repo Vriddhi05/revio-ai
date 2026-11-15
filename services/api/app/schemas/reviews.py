@@ -17,6 +17,7 @@ class PreviewRowOut(BaseModel):
     review_date: date | None
     location: str
     source: str
+    is_synthetic: bool
     issues: list[RowIssueOut]
 
 

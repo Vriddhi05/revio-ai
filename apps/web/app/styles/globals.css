@@ -239,6 +239,7 @@ a { color: inherit; text-decoration: none; }
 .preview-row-copy strong { color: #48514A; font-size: 9px; }
 .preview-row-copy > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .preview-row-copy small { color: #A1493D; font-size: 8px; }
+.preview-row-copy .preview-synthetic-tag { color: var(--teal); font-weight: 700; letter-spacing: .35px; }
 .preview-rating { margin-left: auto; color: #A66A32; font-size: 9px; white-space: nowrap; }
 .import-preview .preview-footnote { margin-bottom: 0; }
 .import-complete { display: flex; flex-direction: column; align-items: center; padding: 37px 12px 18px; text-align: center; }

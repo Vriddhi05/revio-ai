@@ -59,7 +59,7 @@ export default function ReviewsInboxPage() {
 
   return <div className="inbox-page">
     <SectionHeading eyebrow="CUSTOMER VOICE" title="Reviews inbox" description="Search, sort and follow up on reviews from every location." />
-    <div className="inbox-notice"><CircleAlert size={15} /><span>Fictional demo records are clearly marked. Sentiment classification is not available yet.</span></div>
+    <div className="inbox-notice"><CircleAlert size={15} /><span>DEMO / SYNTHETIC DATA: all seeded reviews are fictional Indian examples. Sentiment classification is not available yet.</span></div>
     <section className="inbox-filters" aria-label="Review filters">
       <label className="search-field"><Search size={17} /><input value={filters.search} onChange={(event) => updateFilter("search", event.target.value)} placeholder="Search reviews or authors" aria-label="Search reviews or authors" /></label>
       <label className="filter-control"><span>Location</span><select value={filters.location_id} onChange={(event) => updateFilter("location_id", event.target.value)}><option value="">All locations</option>{locations.map((location) => <option value={location.id} key={location.id}>{location.name}</option>)}</select></label>
@@ -81,7 +81,7 @@ export default function ReviewsInboxPage() {
             <div className="review-item-top"><span className="review-author">{review.author_name || "Anonymous"}</span><span className="review-date">{dateLabel(review.review_date)}</span></div>
             <div className="review-item-meta"><Stars rating={review.rating} /><span>{review.location.name}</span><span className="review-source">{review.source_name}</span></div>
             <p>{review.review_text}</p>
-            <div className="review-item-bottom"><span className={`status-pill status-${review.status}`}>{review.status.replaceAll("_", " ")}</span><span className={`origin-pill${review.is_synthetic ? " origin-synthetic" : ""}`}>{review.is_synthetic ? "Fictional demo" : "CSV import"}</span></div>
+            <div className="review-item-bottom"><span className={`status-pill status-${review.status}`}>{review.status.replaceAll("_", " ")}</span><span className={`origin-pill${review.is_synthetic ? " origin-synthetic" : ""}`}>{review.is_synthetic ? "DEMO / SYNTHETIC DATA" : "CSV import"}</span></div>
           </button>)}</div>
           <div className="inbox-pagination"><span>Page {data.page} of {Math.max(1, data.pages)}</span><div><button type="button" aria-label="Previous page" disabled={page <= 1} onClick={() => setPage((value) => value - 1)}><ChevronLeft size={16} /></button><button type="button" aria-label="Next page" disabled={page >= data.pages} onClick={() => setPage((value) => value + 1)}><ChevronRight size={16} /></button></div></div>
         </>}

@@ -57,12 +57,13 @@ def make_csv(rows: list[dict[str, str]], headers: list[str] | None = None) -> by
 
 
 def row(
-    text: str = "A thoughtful and lovely visit.",
+    text: str = "The chai and poha were fresh; staff packed my takeaway quickly.",
     rating: str = "5",
     external_id: str = "R-1",
-    location: str = "Juniper - Old Town",
+    location: str = "Jaipur, Rajasthan, India",
     review_date: str = "2026-11-14",
-    author: str = "Avery Lane",
+    author: str = "Aditi Sharma",
+    synthetic: str = "true",
 ) -> dict[str, str]:
     return {
         "review_text": text,
@@ -72,7 +73,7 @@ def row(
         "location": location,
         "source": "Google Maps",
         "external_review_id": external_id,
-        "is_synthetic": "false",
+        "is_synthetic": synthetic,
     }
 
 
@@ -93,6 +94,7 @@ def test_preview_reports_invalid_rows_and_required_columns(client: TestClient) -
     assert body["total_rows"] == 2
     assert body["accepted_rows"] == 1
     assert body["rejected_rows"] == 1
+    assert body["preview_rows"][0]["is_synthetic"] is True
     assert {issue["code"] for issue in body["preview_rows"][1]["issues"]} == {
         "missing_review_text", "invalid_rating"
     }
@@ -120,13 +122,25 @@ def test_malformed_csv_returns_consistent_validation_error(client: TestClient) -
 def test_fictional_sample_csv_is_downloadable(client: TestClient) -> None:
     response = client.get("/api/v1/demo/reviews.csv")
     assert response.status_code == 200
-    parsed = response.text.splitlines()
-    assert parsed[0].startswith("review_text,rating")
-    assert len(parsed) == 46
+    rows = list(csv.DictReader(io.StringIO(response.text)))
+    assert len(rows) == 45
+    assert {row["location"] for row in rows} == {
+        "Jaipur, Rajasthan, India",
+        "Chandigarh, India",
+        "Ludhiana, Punjab, India",
+    }
+    assert all(row["is_synthetic"] == "true" for row in rows)
+    assert len({row["author_name"] for row in rows}) == 45
+    assert {int(row["rating"]) for row in rows} == {1, 2, 3, 4, 5}
+    assert any(any("\u0900" <= char <= "\u097f" for char in row["review_text"]) for row in rows)
+    assert any("kaafi badiya" in row["review_text"].casefold() for row in rows)
 
 
 def test_import_is_persistent_and_idempotent(client: TestClient) -> None:
-    content = make_csv([row(), row(external_id="R-2", text="A very slow and disappointing visit.", rating="2")])
+    content = make_csv([
+        row(synthetic="false"),
+        row(external_id="R-2", text="Swiggy order from Pink City Thali arrived late and cold.", rating="2", synthetic="false"),
+    ])
     first = upload(client, content)
     second = upload(client, content)
 
@@ -159,7 +173,7 @@ def test_duplicate_fingerprint_prevents_repeat_without_external_id(client: TestC
 
 def test_import_counts_invalid_rows_and_in_file_duplicates(client: TestClient) -> None:
     accepted = row(external_id="COUNT-1")
-    invalid = row(text="A review with an invalid rating.", rating="6", external_id="COUNT-2")
+    invalid = row(text="Jaipur cafe review with an invalid rating.", rating="6", external_id="COUNT-2")
     response = upload(client, make_csv([accepted, invalid, accepted]))
 
     assert response.status_code == 201
@@ -170,7 +184,7 @@ def test_import_counts_invalid_rows_and_in_file_duplicates(client: TestClient) -
 
 
 def test_preview_handles_more_rows_than_sqlite_parameter_limit(client: TestClient) -> None:
-    rows = [row(text=f"Fictional bulk review {index}", external_id=f"BULK-{index}") for index in range(1100)]
+    rows = [row(text=f"Fictional Jaipur cafe review {index}", external_id=f"BULK-{index}") for index in range(1100)]
     response = upload(client, make_csv(rows), "/api/v1/reviews/imports/preview")
     assert response.status_code == 200
     assert response.json()["total_rows"] == 1100
@@ -193,15 +207,15 @@ def test_tenant_isolation_for_reviews_and_detail(client: TestClient) -> None:
 
 def test_review_pagination_filtering_and_status(client: TestClient) -> None:
     rows = [
-        row(text="Kind and fast service.", rating="5", external_id="P-1", location="North", review_date="2026-11-10"),
-        row(text="Cold coffee, long wait.", rating="2", external_id="P-2", location="North", review_date="2026-11-11"),
-        row(text="Good coffee and kind team.", rating="4", external_id="P-3", location="South", review_date="2026-11-12"),
-        row(text="Slow service, but good pastry.", rating="3", external_id="P-4", location="South", review_date="2026-11-13"),
-        row(text="A lovely quiet table.", rating="5", external_id="P-5", location="North", review_date="2026-11-14"),
+        row(text="Masala chai arrived fast and staff were kind.", rating="5", external_id="P-1", location="Jaipur, Rajasthan, India", review_date="2026-11-10"),
+        row(text="Cold coffee after a long wait at peak hour.", rating="2", external_id="P-2", location="Jaipur, Rajasthan, India", review_date="2026-11-11"),
+        row(text="Good filter coffee and a kind team.", rating="4", external_id="P-3", location="Chandigarh, India", review_date="2026-11-12"),
+        row(text="Service was slow, but the samosa puff was good.", rating="3", external_id="P-4", location="Chandigarh, India", review_date="2026-11-13"),
+        row(text="A quiet table and excellent masala chai.", rating="5", external_id="P-5", location="Jaipur, Rajasthan, India", review_date="2026-11-14"),
     ]
     upload(client, make_csv(rows))
     locations = client.get("/api/v1/locations").json()
-    north_id = next(location["id"] for location in locations if location["name"] == "North")
+    jaipur_id = next(location["id"] for location in locations if location["name"] == "Jaipur, Rajasthan, India")
 
     first_page = client.get("/api/v1/reviews", params={"page": 1, "page_size": 2})
     assert first_page.json()["total"] == 5
@@ -214,14 +228,14 @@ def test_review_pagination_filtering_and_status(client: TestClient) -> None:
 
     filtered = client.get(
         "/api/v1/reviews",
-        params={"search": "cold", "location_id": north_id, "rating": 2, "date_from": "2026-11-11", "date_to": "2026-11-12"},
+        params={"search": "cold", "location_id": jaipur_id, "rating": 2, "date_from": "2026-11-11", "date_to": "2026-11-12"},
     )
     assert filtered.json()["total"] == 1
     target_id = filtered.json()["items"][0]["id"]
     detail = client.get(f"/api/v1/reviews/{target_id}")
-    assert detail.json()["location"]["name"] == "North"
+    assert detail.json()["location"]["name"] == "Jaipur, Rajasthan, India"
     assert detail.json()["source_name"] == "Google Maps"
-    assert detail.json()["author_name"] == "Avery Lane"
+    assert detail.json()["author_name"] == "Aditi Sharma"
 
     updated = client.patch(f"/api/v1/reviews/{target_id}/status", json={"status": "resolved"})
     assert updated.status_code == 200
@@ -233,9 +247,9 @@ def test_analytics_uses_persisted_review_aggregates(client: TestClient) -> None:
         client,
         make_csv(
             [
-                row(rating="5", external_id="A-1", location="One", review_date="2026-11-14"),
-                row(rating="3", external_id="A-2", location="One", review_date="2026-11-13"),
-                row(rating="1", external_id="A-3", location="Two", review_date="2026-11-12"),
+                row(text="Jaipur chai was excellent.", rating="5", external_id="A-1", location="Jaipur, Rajasthan, India", review_date="2026-11-14"),
+                row(text="Jaipur cafe was fine; invoice took a while.", rating="3", external_id="A-2", location="Jaipur, Rajasthan, India", review_date="2026-11-13"),
+                row(text="Chandigarh delivery was cold and late.", rating="1", external_id="A-3", location="Chandigarh, India", review_date="2026-11-12"),
             ]
         ),
     )

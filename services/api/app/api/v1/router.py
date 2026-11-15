@@ -35,7 +35,7 @@ router = APIRouter(prefix="/api/v1")
 @router.get("/demo/reviews.csv", include_in_schema=False)
 def download_fictional_demo_csv() -> FileResponse:
     sample_path = Path(__file__).resolve().parents[5] / "data" / "demo" / "reviews.csv"
-    return FileResponse(sample_path, media_type="text/csv", filename="revio-fictional-demo-reviews.csv")
+    return FileResponse(sample_path, media_type="text/csv", filename="revio-india-demo-synthetic-reviews.csv")
 
 
 def _job_out(job: ReviewImportJob) -> ImportJobOut:
@@ -70,7 +70,7 @@ def _review_out(review: Review) -> ReviewOut:
             filename=review.import_job.filename if review.import_job else None,
             imported_at=review.imported_at,
             ingestion_source=review.ingestion_source,
-            record_origin="synthetic demo" if review.is_synthetic else "CSV import",
+            record_origin="DEMO / SYNTHETIC DATA" if review.is_synthetic else "CSV import",
         ),
     )
 
@@ -104,6 +104,7 @@ def _preview_out(filename: str, preview) -> ImportPreviewOut:
                 review_date=row.review_date,
                 location=row.location,
                 source=row.source,
+                is_synthetic=row.is_synthetic,
                 issues=[RowIssueOut(code=issue.code, message=issue.message) for issue in row.issues],
             )
             for row in preview.rows[:12]

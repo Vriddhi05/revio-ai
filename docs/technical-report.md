@@ -7,7 +7,8 @@
 - Added CSV upload, full-file preview validation, accepted/rejected counts, issue summaries, repeated-review detection, and persistent import job status.
 - Added SQLAlchemy review, tenant location, and import job models with Alembic migration `0002_review_ingestion`.
 - Added tenant-scoped, paginated review search/filter/sort and detail/status APIs. The client inbox supports location, rating, sentiment, date, status, and sort filters plus review detail metadata.
-- Added 45 fictional Juniper & Co. sample reviews across three locations in `data/demo/reviews.csv`. Rows are marked synthetic and shown as fictional demo records in the product. The CSV is downloadable from the import dialog and API.
+- Localized the 45-review fixture to fictional Indian customers and businesses across Jaipur, Rajasthan, India; Chandigarh, India; and Ludhiana, Punjab, India. Reviews span restaurants/cafes, hotels, fitness centres, retail, and food delivery, with Indian English, Hinglish, and Hindi. Every row is marked `is_synthetic=true` and labeled DEMO / SYNTHETIC DATA in the product.
+- Updated startup seeding to synchronize the managed demo fixture in place, refresh existing seeded records and locations, preserve unrelated CSV imports, and retain repeat-startup idempotency without a new migration.
 - Updated README local setup, API, data boundary, and test instructions.
 
 ## Current behavior and limits
@@ -21,7 +22,7 @@
 
 ## Verification
 
-- Backend test suite: 18 passed. The current environment reports one Starlette deprecation warning related to its TestClient/httpx integration.
+- Backend test suite: 19 passed. It verifies the three exact Indian demo locations, 45 fictional rows, rating and priority variation, distinct fictional customer names, Hindi/Hinglish examples, and idempotent replacement of the previous synthetic seed. The current environment reports one Starlette deprecation warning related to its TestClient/httpx integration.
 - Frontend ESLint: passed.
 - Next.js production build: passed.
 - Live FastAPI checks: `/health`, CSV preview/import, duplicate re-import, import status, review search/list/detail, analytics, and location listing passed. The temporary verification tenant and its records were removed afterward.

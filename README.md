@@ -4,7 +4,7 @@ Reputation intelligence for teams that care about every customer conversation.
 
 ## Current milestone: Review ingestion and inbox
 
-REVIO now supports CSV review preview and import, persistent tenant-scoped review storage, duplicate detection, a searchable and filterable Reviews Inbox, review details and status updates, and database-backed Overview metrics. The API seeds a clearly labeled fictional workspace with 45 sample reviews across three Juniper & Co. locations. These records are marked synthetic in the database and throughout the UI. No live review integrations are connected.
+REVIO now supports CSV review preview and import, persistent tenant-scoped review storage, duplicate detection, a searchable and filterable Reviews Inbox, review details and status updates, and database-backed Overview metrics. The API seeds 45 clearly labeled DEMO / SYNTHETIC DATA reviews across Jaipur, Rajasthan, India; Chandigarh, India; and Ludhiana, Punjab, India. The fictional examples use Indian customer names and cover restaurants, cafes, hotels, fitness centres, retail, and food delivery. No live review integrations are connected.
 
 Sentiment classification, RAG, response generation, and crisis monitoring are not implemented in this milestone. The sentiment filter is present but returns no matches until reviews are classified. Urgency is currently a simple rating-based review status/priority rule, not an AI assessment.
 
@@ -28,7 +28,7 @@ uvicorn app.main:app --reload
 
 SQLite is the default and creates `services/api/revio.db` automatically. To use another local SQLite path, set `DATABASE_URL` in `services/api/.env`, for example `sqlite:///./revio.db`. Alembic applies migrations at API startup. To apply them manually from `services/api`, run `alembic upgrade head`.
 
-The first startup creates the `revio-demo` workspace, its local demo membership, locations, and fictional seed reviews. Seed rows are added idempotently to this demo tenant only; repeated startup does not duplicate reviews. The sample CSV is also available at [`data/demo/reviews.csv`](data/demo/reviews.csv) and through `GET /api/v1/demo/reviews.csv`.
+The first startup creates the `revio-demo` workspace, its local demo membership, locations, and fictional seed reviews. Startup synchronizes the 45 managed synthetic rows in this demo tenant in place, so repeated startup is idempotent and upgrades the previous demo fixture without changing migrations or overwriting non-demo CSV-imported records. The sample CSV is also available at [`data/demo/reviews.csv`](data/demo/reviews.csv) and through `GET /api/v1/demo/reviews.csv`.
 
 - Health: <http://127.0.0.1:8000/health>
 - API docs: <http://127.0.0.1:8000/docs>
@@ -60,9 +60,9 @@ All workspace endpoints accept `X-Tenant-Slug`; the local demo client uses `revi
 | `PATCH` | `/api/v1/reviews/{review_id}/status` | Update review status (`new`, `needs_attention`, `resolved`) |
 | `GET` | `/api/v1/locations` | List workspace locations for filters |
 | `GET` | `/api/v1/analytics/summary` | Read total, average rating, attention count, locations, and daily volume |
-| `GET` | `/api/v1/demo/reviews.csv` | Download the fictional sample CSV |
+| `GET` | `/api/v1/demo/reviews.csv` | Download the Indian DEMO / SYNTHETIC DATA sample CSV |
 
-CSV imports require `review_text` and `rating`. Optional columns include `author_name`, `review_date`, `location`, `source`, `external_review_id`, and `is_synthetic`. UTF-8 CSV files up to 10 MB and 10,000 rows are supported. Ratings must be between 1 and 5 in half-star increments. The importer validates the full file, shows an upload preview, and uses tenant-scoped review fingerprints to prevent repeated rows from being stored twice.
+CSV imports require `review_text` and `rating`. Optional columns include `author_name`, `review_date`, `location`, `source`, `external_review_id`, and `is_synthetic`. UTF-8 CSV files up to 10 MB and 10,000 rows are supported. Ratings must be between 1 and 5 in half-star increments. The importer validates the full file, shows an upload preview, and uses tenant-scoped review fingerprints to prevent repeated rows from being stored twice. The downloadable sample contains 45 fictional Indian reviews, including Indian English, Hinglish, and Hindi text; all rows are marked synthetic.
 
 ## Checks
 

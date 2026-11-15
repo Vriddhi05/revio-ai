@@ -48,7 +48,7 @@ export default function OverviewPage() {
     <div className="overview-page">
       <SectionHeading eyebrow="WORKSPACE OVERVIEW" title="Your reputation, in focus." description="A thoughtful view of what customers are saying across your locations." action={<button className="button button-secondary" type="button" onClick={() => setImportOpen(true)}><ArrowDownToLine size={16} /> Import reviews</button>} />
 
-      <div className="demo-notice" role="status"><span className="notice-mark">i</span><p><strong>Fictional demo workspace.</strong> Seeded records are synthetic examples; CSV imports are labelled separately. No live review integrations are connected.</p><span className="notice-label">SAMPLE DATA</span></div>
+      <div className="demo-notice" role="status"><span className="notice-mark">i</span><p><strong>DEMO / SYNTHETIC DATA.</strong> All 45 seeded reviews are fictional Indian examples; CSV imports are labelled separately. No live review integrations are connected.</p><span className="notice-label">INDIA DEMO</span></div>
       {error && <div className="inline-error" role="alert"><strong>Workspace data could not be loaded.</strong> {error} <button type="button" onClick={load}>Retry</button></div>}
 
       <section className="metrics-grid" aria-label="Reputation summary" aria-busy={loading}>
