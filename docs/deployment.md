@@ -2,11 +2,11 @@
 
 ## Current status
 
-The owner reports that the Next.js frontend was deployed to Vercel Hobby and provided the URLs below. On 17 November 2026, direct HTTP checks returned 200 for all six frontend routes. The previously observed browser showed the Overview shell with `Failed to fetch`. In the latest API check, the Codespaces `/health` request returned HTTP 302 to GitHub sign-in and the CORS preflight returned HTTP 401 with `WWW-Authenticate: tunnel`. This indicates that the forwarded port is currently behind GitHub tunnel authentication; it is a reachability/port-visibility failure before FastAPI, so it does not verify or disprove the FastAPI CORS configuration. The backend, retrieval, draft, and approval workflow are **not verified on the public deployment**. Reopen port 8000 to Public in the existing Codespace, pull the latest `main`, and restart with the bootstrap before repeating these checks.
+The owner reports that the Next.js frontend was deployed to Vercel Hobby and provided the URLs below. Post-push direct HTTP checks on 17 November 2026 returned 200 for all six frontend routes. The previously observed browser showed the Overview shell with `Failed to fetch`. After the push, the Codespaces `/health`, an analytics GET, and Vercel-origin CORS preflight returned empty HTTP 404 responses from the tunnel; earlier checks returned HTTP 302/401 tunnel-auth responses. These responses did not reach FastAPI and do not verify or disprove its CORS configuration. The backend, retrieval, draft, and approval workflow are **not verified on the public deployment**. The repository previously defaulted port 8000 visibility to `private`; the new revision sets it to `public`, but the existing Codespace must pull the latest `main`, ensure the forwarded port is Public in its Ports panel, and restart with the bootstrap before repeating these checks.
 
 - Frontend: <https://revio-ai-smoky.vercel.app>
 - Codespaces API origin: <https://expert-space-orbit-5vqwjw76v5p37p95-8000.app.github.dev>
-- API health check: <https://expert-space-orbit-5vqwjw76v5p37p95-8000.app.github.dev/health> (HTTP 302 to GitHub sign-in at the latest check)
+- API health check: <https://expert-space-orbit-5vqwjw76v5p37p95-8000.app.github.dev/health> (empty HTTP 404 from the tunnel after the latest push)
 
 No paid hosting resource or trial was intentionally created. The owner’s current quota and actual account billing are not independently verified. The Vercel Hobby plan is restricted to personal, non-commercial use; use only if this assessment demo qualifies under those terms. Only synthetic data may be exposed.
 
