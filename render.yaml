@@ -1,0 +1,41 @@
+# Prepared Render API service for the explicitly fictional public assessment demo.
+# Creating this Blueprint provisions paid compute and a persistent disk; do not sync
+# it until the owner approves the displayed bill estimate.
+services:
+  - type: web
+    name: revio-demo-api
+    runtime: python
+    plan: 2c-4g
+    region: singapore
+    rootDir: .
+    buildCommand: bash services/api/scripts/render-build.sh
+    startCommand: bash services/api/scripts/render-start.sh
+    autoDeployTrigger: 'off'
+    healthCheckPath: /health
+    disk:
+      name: revio-demo-data
+      mountPath: /var/data
+      sizeGB: 2
+    envVars:
+      - key: APP_NAME
+        value: REVIO API — DEMONSTRATION
+      - key: APP_ENV
+        value: demo
+      - key: DATABASE_URL
+        value: sqlite:////var/data/revio.db
+      - key: KNOWLEDGE_VECTOR_BACKEND
+        value: sqlite
+      - key: KNOWLEDGE_VECTOR_PATH
+        value: /var/data/knowledge-index
+      - key: HF_HOME
+        value: /var/data/huggingface
+      - key: HF_HUB_CACHE
+        value: /var/data/huggingface/hub
+      - key: REVIO_SENTIMENT_PROVIDER
+        value: fallback
+      - key: REVIO_ASPECT_PROVIDER
+        value: rules
+      - key: RESPONSE_LLM_PROVIDER
+        value: demo
+      - key: CORS_ALLOWED_ORIGINS
+        value: http://localhost:3000,http://127.0.0.1:3000

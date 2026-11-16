@@ -38,6 +38,11 @@ class Settings(BaseSettings):
     response_llm_api_key: str | None = None
     response_llm_model: str = "gpt-4.1-mini"
     response_llm_timeout_seconds: int = Field(default=30, ge=5, le=120)
+    cors_allowed_origins: str = (
+        "http://localhost:3000,http://127.0.0.1:3000,"
+        "http://localhost:3100,http://127.0.0.1:3100,"
+        "http://localhost:3101,http://127.0.0.1:3101"
+    )
 
     model_config = SettingsConfigDict(
         env_file=API_ROOT / ".env",
@@ -51,7 +56,17 @@ class Settings(BaseSettings):
             raise ValueError("Knowledge chunk overlap must be smaller than the character chunk size.")
         if self.knowledge_chunk_token_overlap >= self.knowledge_chunk_max_tokens:
             raise ValueError("Knowledge token overlap must be smaller than the token chunk size.")
+        if "*" in self.cors_origins:
+            raise ValueError("CORS_ALLOWED_ORIGINS must list explicit origins; wildcard origins are not allowed.")
         return self
+
+    @property
+    def cors_origins(self) -> list[str]:
+        return list(dict.fromkeys(
+            origin.strip().rstrip("/")
+            for origin in self.cors_allowed_origins.split(",")
+            if origin.strip()
+        ))
 
 
 @lru_cache

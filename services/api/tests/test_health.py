@@ -6,6 +6,7 @@ from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.pool import StaticPool
 
+from app.core.config import Settings
 from app.db.base import Base
 from app.db.init_db import seed_demo_reviews
 from app.db.session import SessionLocal
@@ -17,9 +18,32 @@ from app.services.review_csv import mark_duplicates, parse_review_csv
 def test_health_reports_database_connection() -> None:
     with TestClient(app) as client:
         response = client.get("/health")
+        cors_response = client.options(
+            "/health",
+            headers={
+                "Origin": "http://localhost:3000",
+                "Access-Control-Request-Method": "GET",
+            },
+        )
 
     assert response.status_code == 200
     assert response.json() == {"status": "ok", "database": "ok"}
+    assert cors_response.headers["access-control-allow-origin"] == "http://localhost:3000"
+
+
+def test_cors_origins_are_explicit_and_normalized() -> None:
+    settings = Settings(
+        cors_allowed_origins=" https://revio.example/ , http://localhost:3000,,https://revio.example "
+    )
+
+    assert settings.cors_origins == ["https://revio.example", "http://localhost:3000"]
+
+
+def test_cors_wildcard_is_rejected() -> None:
+    import pytest
+
+    with pytest.raises(ValueError, match="explicit origins"):
+        Settings(cors_allowed_origins="*")
 
 
 def test_demo_workspace_and_membership_are_seeded_idempotently() -> None:

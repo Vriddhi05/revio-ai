@@ -1,4 +1,4 @@
-# REVIO technical report — Milestone 3
+# REVIO technical report — Milestones 3–5
 
 ## Implemented
 
@@ -94,3 +94,12 @@ ChromaDB is the preferred production vector store. The tested Windows/Python 3.1
 - The default demo provider is a deterministic template and does not claim to be an LLM. Configured hosted provider behavior requires credentials and was not live-tested here.
 - Factuality validation is heuristic; a human must check each cited passage, the final text, and high-severity cases. The app does not create support tickets, trigger actual escalation, or publish responses.
 - Graph execution currently runs synchronously in the API request process. A durable queue and retries are future scaling work; Redis/Celery are not used in this milestone.
+
+## Final deployment and submission preparation — 16 November 2026
+
+- Added a manual-only Render API Blueprint, Python 3.12.16 pin, build/start scripts, explicit CORS allowlist, and step-by-step Vercel/Render instructions. The proposed Render service uses one 2 CPU / 4 GB instance in Singapore and a 2 GB persistent disk for the SQLite database, verified SQLite vector fallback, and lazy E5 model cache. The deployment Python patch is newer than the local test runtime (3.12.6) and awaits cloud verification.
+- Render Blueprint auto-deploy is disabled. No Render/Vercel service has been created, no paid resource has been provisioned, and there are no live REVIO URLs. Owner must approve the listed Render estimate before provisioning; see [deployment readiness](deployment.md).
+- Prepared standalone [AI Opportunity Report](ai-opportunity-report.md) and [Technical Approach Report](technical-approach-report.md), using committed evaluation results and explicitly separating local measurements from cloud estimates.
+- Final local verification after deployment configuration changes: backend 52 passed; frontend ESLint passed; Next.js production build passed; YAML manifest parsed and its intended plan, region, disk, and manual-deploy values were checked; Render shell scripts passed `bash -n`; fresh FastAPI startup on port 8011 applied/reconfirmed migrations and `/health` returned `{"status":"ok","database":"ok"}`. Tenant-scoped API returned the preserved 45 fictional reviews and exactly the three configured Indian locations.
+- Public frontend/API URL checks, deployed cross-origin checks, browser errors, and public mobile responsiveness remain pending service provisioning and a real deployment. No browser or hosting success is claimed for a public deployment.
+- Current published Render pricing observed 16 November 2026 is $85/month for `2c-4g`; the proposed 2 GB disk adds $0.50/month. The $85.50/month backend estimate excludes taxes, metered usage, Vercel plan costs, and hosted LLM fees. The hosted provider is not configured. See the provider references in [`deployment.md`](deployment.md).
