@@ -8,6 +8,7 @@ export default function Topbar() {
   const currentPage = pathname === "/reviews" ? "Reviews inbox"
     : pathname === "/crisis-monitor" ? "Crisis monitor"
       : pathname === "/locations" ? "Location analytics"
+        : pathname === "/knowledge-base" ? "Knowledge base"
         : pathname === "/" ? "Overview" : "Workspace";
   return (
     <header className="topbar">

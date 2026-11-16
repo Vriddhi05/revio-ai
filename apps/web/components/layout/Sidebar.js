@@ -20,6 +20,7 @@ const navigation = [
   { label: "Response studio", href: "/response-studio", icon: Sparkles, disabled: true },
   { label: "Crisis monitor", href: "/crisis-monitor", icon: ShieldAlert },
   { label: "Location analytics", href: "/locations", icon: BarChart3 },
+  { label: "Knowledge base", href: "/knowledge-base", icon: BookOpenText },
 ];
 
 function BrandMark() {
@@ -58,7 +59,6 @@ export default function Sidebar() {
 
       <div className="sidebar-bottom">
         <div className="sidebar-note"><span className="note-star">✳</span><p>A clearer view of every customer conversation.</p></div>
-        <div className="sidebar-utility"><BookOpenText size={16} /><span>Knowledge base</span><span className="nav-soon">SOON</span></div>
         <div className="sidebar-utility"><CircleHelp size={16} /><span>Help & support</span></div>
         <div className="sidebar-profile">
           <div className="profile-avatar">RD</div>

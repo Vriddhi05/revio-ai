@@ -39,6 +39,14 @@ The pinned `airzipm/sentiment-analysis-muril-v2` checkpoint was run locally on C
 
 This small evaluation does not establish that MuRIL is generally better: its accuracy is slightly higher, but its macro F1 is lower and its neutral recall is poor. The current default remains the fallback pending more representative labels, error analysis, and calibration. Do not interpret these measurements as production performance.
 
+## Milestone 4: RAG knowledge engine
+
+Added tenant-scoped PDF/TXT/Markdown ingestion, extraction and validation, content-hashed document versions, stable page-aware chunks, persistent embeddings, cited semantic retrieval, configurable similarity abstention, document reindex/delete, and six synthetic Indian business-policy examples. Scanned PDFs are rejected because OCR is not implemented. Retrieved passages are marked untrusted; phrase-based risk flags are advisory and are not prompt-injection protection. Response generation and LangGraph are outside this milestone.
+
+The selected retrieval model is `intfloat/multilingual-e5-small` pinned at `fd1525a9fd15316a2d503bf26ab031a61d056e98` (384 dimensions, 512-token context, normalized query/passage-prefixed embeddings). On the 36-question synthetic Indian English/Hindi/Hinglish set, E5 achieved Recall@1/3/5 of 53.33%/80.00%/100%, MRR 0.7061, median/p95 warmed local query+retrieval of 25.19/32.54 ms, and process RSS of 648.07 MB after load. The comparison MiniLM reached 40.00%/66.67%/73.33%, MRR 0.5278, 22.10/29.14 ms, and 451.30 MB. Six no-match examples abstained under each model's threshold; thresholds were selected on that same small set and are not independently calibrated. Evaluation used local CPU inference with no hosted model API, so the run's metered inference charges were $0.00; local compute, electricity, and storage are not costed. Full measurements and caveats are in [the Milestone 4 knowledge retrieval report](knowledge-retrieval-report.md) and [`data/evaluation/knowledge_retrieval_results.json`](../data/evaluation/knowledge_retrieval_results.json).
+
+ChromaDB is the preferred production vector store. The tested Windows/Python 3.12 environment stalled on Chroma writes, so Windows `auto` uses a persistent tenant-filtered exact-cosine SQLite vector fallback; Chroma runtime was not claimed as verified here. Persistent Chroma remains selectable and is selected by `auto` on non-Windows. A durable processing queue is deferred; indexing currently uses FastAPI in-process background tasks.
+
 ## Configuration
 
 - Default local settings use the deterministic fallback and multilingual phrase rules; API startup does not download weights.

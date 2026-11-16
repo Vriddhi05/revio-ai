@@ -16,3 +16,17 @@ export async function apiRequest(path, options = {}) {
 export function apiBaseUrl() {
   return API_BASE;
 }
+
+export function uploadKnowledgeDocument(file, title) {
+  const form = new FormData();
+  form.append("file", file);
+  if (title) form.append("title", title);
+  return apiRequest("/knowledge/documents", { method: "POST", body: form });
+}
+
+export function searchKnowledge(query, topK = 5) {
+  return apiRequest("/knowledge/search", {
+    method: "POST",
+    body: JSON.stringify({ query, top_k: topK }),
+  });
+}

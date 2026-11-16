@@ -2,7 +2,7 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Literal
 
-from pydantic import Field
+from pydantic import Field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 API_ROOT = Path(__file__).resolve().parents[2]
@@ -20,12 +20,33 @@ class Settings(BaseSettings):
     crisis_similar_complaint_minimum: int = Field(default=3, ge=2)
     crisis_cross_location_minimum: int = Field(default=2, ge=2)
     crisis_customer_repeat_minimum: int = Field(default=2, ge=2)
+    knowledge_vector_path: str = str(API_ROOT / "chroma_data")
+    knowledge_vector_backend: Literal["auto", "chroma", "sqlite"] = "auto"
+    knowledge_embedding_model: str = "intfloat/multilingual-e5-small"
+    knowledge_embedding_revision: str = "fd1525a9fd15316a2d503bf26ab031a61d056e98"
+    knowledge_upload_max_bytes: int = Field(default=10 * 1024 * 1024, ge=1024, le=50 * 1024 * 1024)
+    knowledge_chunk_chars: int = Field(default=900, ge=250, le=3000)
+    knowledge_chunk_overlap: int = Field(default=140, ge=0, le=1000)
+    knowledge_chunk_max_tokens: int = Field(default=480, ge=64, le=512)
+    knowledge_chunk_token_overlap: int = Field(default=64, ge=0, le=256)
+    # Calibrated on the committed synthetic Indian-policy evaluation set. This
+    # is a starting threshold, not a production-calibrated confidence score.
+    knowledge_min_similarity: float = Field(default=0.822045, ge=0, le=1)
+    knowledge_max_extracted_chars: int = Field(default=2_000_000, ge=1000, le=10_000_000)
 
     model_config = SettingsConfigDict(
         env_file=API_ROOT / ".env",
         env_file_encoding="utf-8",
         extra="ignore",
     )
+
+    @model_validator(mode="after")
+    def validate_knowledge_chunk_settings(self):
+        if self.knowledge_chunk_overlap >= self.knowledge_chunk_chars:
+            raise ValueError("Knowledge chunk overlap must be smaller than the character chunk size.")
+        if self.knowledge_chunk_token_overlap >= self.knowledge_chunk_max_tokens:
+            raise ValueError("Knowledge token overlap must be smaller than the token chunk size.")
+        return self
 
 
 @lru_cache

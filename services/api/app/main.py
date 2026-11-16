@@ -8,6 +8,7 @@ from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from app.api.v1.router import router as v1_router
+from app.api.v1.knowledge import router as knowledge_router
 from app.core.config import get_settings
 from app.db.init_db import initialize_database
 from app.db.session import get_db
@@ -22,12 +23,13 @@ async def lifespan(_: FastAPI):
 app = FastAPI(title=get_settings().app_name, version="0.1.0", lifespan=lifespan)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://127.0.0.1:3000", "http://localhost:3100", "http://127.0.0.1:3100"],
+    allow_origins=["http://localhost:3000", "http://127.0.0.1:3000", "http://localhost:3100", "http://127.0.0.1:3100", "http://localhost:3101", "http://127.0.0.1:3101"],
     allow_credentials=False,
-    allow_methods=["GET", "POST", "PATCH", "OPTIONS"],
+    allow_methods=["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
     allow_headers=["Content-Type", "X-Tenant-Slug"],
 )
 app.include_router(v1_router)
+app.include_router(knowledge_router)
 
 
 @app.exception_handler(HTTPException)

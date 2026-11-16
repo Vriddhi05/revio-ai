@@ -1,0 +1,4 @@
+# Optional document retrieval stack; model weights download lazily on first indexing.
+chromadb==1.5.9
+pypdf==6.21.4
+sentence-transformers==5.7.0

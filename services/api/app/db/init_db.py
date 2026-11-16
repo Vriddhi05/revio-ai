@@ -1,7 +1,8 @@
 import hashlib
 from pathlib import Path
+from datetime import datetime, timezone
 
-from sqlalchemy import or_, select
+from sqlalchemy import or_, select, update
 from sqlalchemy.orm import Session
 
 from alembic import command
@@ -9,7 +10,7 @@ from alembic.config import Config
 
 from app.core.config import API_ROOT
 from app.db.session import SessionLocal
-from app.models import Location, Membership, Review, ReviewImportJob, Tenant, User
+from app.models import KnowledgeDocument, Location, Membership, Review, ReviewImportJob, Tenant, User
 from app.services.review_csv import parse_review_csv
 
 DEMO_IMPORT_FILENAME = "REVIO DEMO / SYNTHETIC DATA — Indian business reviews"
@@ -27,8 +28,24 @@ def initialize_database() -> None:
     config.set_main_option("script_location", str(API_ROOT / "migrations"))
     command.upgrade(config, "head")
     with SessionLocal() as db:
+        recover_interrupted_knowledge_documents(db)
         tenant = ensure_demo_workspace(db)
         seed_demo_reviews(db, tenant)
+
+
+def recover_interrupted_knowledge_documents(db: Session) -> int:
+    """Make in-process jobs left by an API restart retryable; MVP runs one API process."""
+    result = db.execute(
+        update(KnowledgeDocument)
+        .where(KnowledgeDocument.status == "processing")
+        .values(
+            status="failed",
+            error_message="Processing was interrupted by an API restart. Reindex to retry.",
+            updated_at=datetime.now(timezone.utc),
+        )
+    )
+    db.commit()
+    return int(result.rowcount or 0)
 
 
 def ensure_demo_workspace(db: Session) -> Tenant:
