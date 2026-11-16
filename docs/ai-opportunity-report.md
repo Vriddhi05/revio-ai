@@ -1,6 +1,6 @@
 # REVIO AI Opportunity Report
 
-**Assessment status:** Demonstration product, not a production service. This report uses the available REVIO implementation and its committed fictional evaluation sets. No real customer data, live review-source connection, hosted LLM call, or deployment was used. It covers the AI opportunity and evidence categories specified in the current Cynbit submission request; a separate assessment rubric was not provided.
+**Assessment status:** Demonstration product, not a production service. This report uses the available REVIO implementation and its committed fictional evaluation sets. No real customer data, live review-source connection, or hosted LLM call was used. The public frontend is deployed at <https://revio-ai-smoky.vercel.app>; as of 16 November 2026 its Overview showed `Failed to fetch`, while the public Codespaces API `/health` request returned HTTP 404 from the tunnel. Public API, CORS, and end-to-end AI workflow are not yet verified. It covers the AI opportunity and evidence categories specified in the current Cynbit submission request; a separate assessment rubric was not provided.
 
 ## Opportunity
 
@@ -50,7 +50,7 @@ The response workflow's quality has not been benchmarked. The live M5 run used t
 
 The local evaluation made no hosted AI calls, so hosted model inference charges for those evaluation runs were $0.00. Local compute, electricity, storage, and bandwidth are not priced. Response-provider costs remain unknown because no provider, model account, or live traffic profile was configured.
 
-No hosting resources have been created, so current deployment spend is $0. The proposed Vercel Hobby plus personal GitHub Codespaces route can use $0 of additional spend only while the owner's included free quotas remain available and the assessment use qualifies for Vercel Hobby's personal, non-commercial terms. GitHub Free personal accounts list 120 Codespaces core-hours and 15 GB-month storage; compute consumption depends on the machine selected. Account balance and actual service use have not been verified. Do not add a payment method, start a paid trial, or claim a guaranteed free public SLA. Details and provider sources are in deployment.md.
+The owner reports using Vercel Hobby for the frontend and a personal GitHub Codespace for the API; the public origins are listed in [deployment.md](deployment.md). No paid resource or trial was intentionally configured, but account quota and actual billing are not independently verified. Vercel Hobby is limited to personal, non-commercial use. The public frontend returned HTTP 200 for its six product routes, but the browser showed an API fetch failure; the public API `/health` and preflight returned HTTP 404 during this check. Do not present the public product workflow as operational until it passes the recorded verification steps. Do not add a payment method, start a paid trial, or claim a guaranteed free public SLA.
 
 ## Scaling path
 

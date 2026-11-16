@@ -2,7 +2,13 @@
 
 ## Current status
 
-No hosting service has been created, no deployment has been attempted, and no public URL exists. This repository prepares a temporary synthetic-data demonstration using a personal GitHub Codespace for FastAPI and Vercel Hobby for Next.js. No paid plan, trial, billing method, LLM credential, or hosted resource is part of this plan. Public deployment and URL checks remain pending the owner’s account setup.
+The owner reports that the Next.js frontend was deployed to Vercel Hobby and provided the URLs below. Verification was performed on 16 November 2026. The public frontend returned HTTP 200 for all six routes listed below. A browser rendered the Overview shell, but its workspace API request showed `Failed to fetch`; its metric cards and review content were unavailable. The frontend’s public JavaScript bundle contains the configured Codespaces API origin. A public request to that API origin’s `/health` returned HTTP 404 from the Codespaces tunnel, and the CORS preflight also returned HTTP 404. The API workflow, retrieval, draft, approval, and CORS are therefore **not verified on the public deployment**. Restart the existing API with `VERCEL_ORIGIN` set, then repeat the checks in this document.
+
+- Frontend: <https://revio-ai-smoky.vercel.app>
+- Codespaces API origin: <https://expert-space-orbit-5vqwjw76v5p37p95-8000.app.github.dev>
+- API health check: <https://expert-space-orbit-5vqwjw76v5p37p95-8000.app.github.dev/health> (HTTP 404 at the time checked)
+
+No paid hosting resource or trial was intentionally created. The owner’s current quota and actual account billing are not independently verified. The Vercel Hobby plan is restricted to personal, non-commercial use; use only if this assessment demo qualifies under those terms. Only synthetic data may be exposed.
 
 Do not upload real customer reviews, private business policies, credentials, or personal information. The X-Tenant-Slug header selects the demo workspace; it is not authentication or authorization. A public forwarded API port allows anyone with its URL to reach the unauthenticated demo API. REVIO is not production-secure.
 
@@ -75,15 +81,16 @@ See Vercel’s [Hobby plan and limits](https://vercel.com/docs/plans/hobby) and 
 
 ## Allow the Vercel origin and restart the API
 
-Replace the placeholder with the exact Vercel production origin, then run this in the Codespace terminal:
+For the current deployment, run this in the existing Codespace terminal. It restarts the one-worker API with explicit-origin CORS, keeps the Codespace SQLite/vector files in place, and runs the bootstrap’s idempotent checks/restoration of the 45 synthetic reviews and six policy examples:
 
-    VERCEL_ORIGIN="https://<exact-project>.vercel.app" services/api/.venv/bin/python services/api/scripts/codespaces_bootstrap.py restart
+    cd /workspaces/revio-ai
+    VERCEL_ORIGIN="https://revio-ai-smoky.vercel.app" services/api/.venv/bin/python services/api/scripts/codespaces_bootstrap.py restart
 
-The restart preserves the workspace SQLite data and vector index, applies explicit-origin CORS, checks API health, verifies the 45-review source and six policy sources, and rebuilds missing synthetic vectors. Do not use a wildcard CORS origin. Check /health and run a knowledge search again before sharing the Vercel URL.
+After the command completes, check `/health`, review count, document readiness, a cited semantic search, response generation, and human approval. Then repeat the public CORS preflight and browser workflow checks. Do not use a wildcard CORS origin. Keep the Codespace active for the demo; if it restarts, run the same command with `VERCEL_ORIGIN` again.
 
 ## Public review checklist after account setup
 
-No public checks are claimed yet. After the owner creates the services and provides the actual URLs, verify:
+Current public check results are recorded under **Current status** above. After restarting the API with the configured Vercel origin, repeat and record these checks before calling the public demo complete:
 
 - API GET /health returns the database health response.
 - Overview, Reviews Inbox, Crisis Monitor, Location Analytics, Knowledge Base, and Response Studio load without uncaught browser errors.
