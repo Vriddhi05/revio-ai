@@ -7,7 +7,7 @@
     }
   },
   "onCreateCommand": "bash .devcontainer/setup.sh",
-  "postStartCommand": "services/api/.venv/bin/python services/api/scripts/codespaces_bootstrap.py start",
+  "postStartCommand": "bash .devcontainer/start.sh",
   "forwardPorts": [8000],
   "portsAttributes": {
     "8000": {
