@@ -1,62 +1,95 @@
-# REVIO deployment readiness
+# REVIO zero-budget assessment deployment
 
-## Status
+## Current status
 
-The deployment configuration is prepared but **no service has been created or deployed**. There are no live REVIO URLs to report. No paid resource has been provisioned. The deployment must remain labeled as a demonstration using only the committed fictional Indian reviews and fictional policies.
+No hosting service has been created, no deployment has been attempted, and no public URL exists. This repository prepares a temporary synthetic-data demonstration using a personal GitHub Codespace for FastAPI and Vercel Hobby for Next.js. No paid plan, trial, billing method, LLM credential, or hosted resource is part of this plan. Public deployment and URL checks remain pending the owner’s account setup.
 
-## Recommended hosting topology
+Do not upload real customer reviews, private business policies, credentials, or personal information. The X-Tenant-Slug header selects the demo workspace; it is not authentication or authorization. A public forwarded API port allows anyone with its URL to reach the unauthenticated demo API. REVIO is not production-secure.
 
-| Component | Hosting | Configuration |
-| --- | --- | --- |
-| Next.js frontend | Vercel | Import the repository as a separate project with root directory `apps/web`; set `NEXT_PUBLIC_API_BASE_URL` to the real API origin before building. |
-| FastAPI, SQLite database, vector index, model cache | Render | One Singapore web service, plan `2c-4g` (2 CPU, 4 GB RAM), and a 2 GB persistent disk mounted at `/var/data`. The checked-in `render.yaml` disables automatic deploys. |
+## Chosen zero-budget topology
 
-The selected E5 model measured 648.07 MB process RSS after loading in the local CPU evaluation. The 512 MB Render tier cannot hold that measured process footprint. The 4 GB plan provides room for the API, model runtime, and request work; this is a sizing recommendation, not a cloud benchmark. Render publishes `2c-4g` at $85/month and persistent disks at $0.25/GB/month; this configuration's API compute and 2 GB disk therefore have an indicative listed cost of **$85.50/month**, before tax, bandwidth/other metered usage, and any Vercel plan or hosted-model charges. Confirm the current estimate in the account before provisioning. No LLM provider key is configured and hosted inference is disabled.
+| Part | Service | Configuration | Persistence / limits |
+| --- | --- | --- | --- |
+| Next.js frontend | Vercel Hobby | Import Vriddhi05/revio-ai; root apps/web; set NEXT_PUBLIC_API_BASE_URL to the public API origin | Free usage is capped; Hobby is for personal, non-commercial use. Do not start a Pro trial. |
+| FastAPI, SQLite, vector index, LangGraph | GitHub Codespaces Free on a personal account | Use .devcontainer/devcontainer.json; select a 4-core, 16 GB machine if the account offers it | GitHub Free includes 120 Codespaces core-hours and 15 GB-month storage for personal accounts. A 4-core machine uses 4 core-hours per running hour. Confirm remaining quota before creation. |
+| Reviews and knowledge data | SQLite files in the Codespace workspace | Startup applies Alembic, synchronizes the 45 managed fictional reviews, and restores/reindexes the six committed policy examples | Files survive Codespace stop/start but are lost if the Codespace is deleted or rebuilt from scratch. The committed fictional dataset can be reconstructed; user uploads are temporary. |
+| Embedding model | intfloat/multilingual-e5-small, pinned revision in the evaluation report | Downloaded from Hugging Face during first policy indexing and cached in the Codespace home directory | The recorded local evaluation measured 470.44 MB of model files and 648.07 MB process RSS after load. A separate full-API diagnostic with multilingual MiniLM L12 measured 689.89 MB after query embedding. These are local measurements, not Codespaces benchmarks. The requested 16 GB Codespace has substantial headroom for this measured workload. |
 
-Render Singapore is the nearest listed Render region for India. Vercel serves the frontend through its global CDN. The one-instance Render design deliberately uses the already verified exact-cosine SQLite vector fallback rather than depending on a Chroma write path that stalled in the verified Windows environment. SQLite relational data, vector data, and the lazy Hugging Face cache all live under the same attached disk. The 45 managed synthetic review rows are created or synchronized by idempotent startup code after Alembic upgrades.
+This is temporary assessment compute, not persistent public hosting. GitHub documents a 12-hour maximum lifetime and a default 30-minute idle timeout for Codespaces. Public traffic is not a promised keep-alive mechanism. Keep the Codespace active while presenting and restart it manually if it stops. Its forwarded port URL belongs to that Codespace; avoid creating a replacement unless necessary because the API origin will change.
 
-The E5 model is loaded lazily. The first knowledge-document indexing/search operation on a new service can download about 470 MB of model files and incur cold-load latency. The test environment's 648.07 MB RSS and 25.19 ms median / 32.54 ms p95 warmed query-plus-retrieval measurements are local CPU measurements, not predicted Render latency.
+Vercel Hobby terms are limited to personal, non-commercial use. Use this route only if the owner’s assessment demonstration qualifies under those terms. Otherwise stop and ask for another genuinely free option; do not accept a paid trial or upgrade.
 
-The persistent disk is attached to one service instance. Render documents that attached disks cannot be shared across service instances and prevent horizontal scaling of the service; deployments have brief downtime. This design is suitable for the assessment demo and modest single-process use, not high availability or a multi-tenant production SaaS. A later production architecture should move relational records to managed PostgreSQL, documents to object storage, and vectors to a server-backed vector service, then add durable background processing, authenticated membership enforcement, rate limits, backup/recovery procedures, and monitoring.
+## Why Render Free is not selected
 
-## Owner actions required before public deployment
+Render Free documents 512 MB RAM, no persistent disk, and loss of local files on restart, redeploy, or idle spin-down. It stops after 15 minutes without inbound traffic and takes about a minute to restart. REVIO’s selected E5 model alone measured 648.07 MB RSS in the local retrieval evaluation, already above the published limit. The full API plus the smaller multilingual MiniLM L12 measured 689.89 MB after a query in this environment, also above the limit. These local readings do not predict Render’s exact Linux RSS; they do show that the current implementation cannot be shown to fit safely in 512 MB. Do not deploy this API to Render Free for the assessment.
 
-No credentials should be sent in chat. Sign in directly to each provider and approve service creation yourself.
+The 45 synthetic reviews are synchronized idempotently by FastAPI startup. The existing demo-policy endpoint adds the six committed files idempotently; this repository’s Codespaces bootstrap calls that endpoint and checks/reindexes missing SQLite vector rows. On a completely reset filesystem, this can recreate reviews, policies, and the vector index. It does not solve Render’s model memory limit, or repeated model download and cold indexing. See [Render’s free-tier limits](https://render.com/docs/free).
 
-1. **Review the paid Render estimate first.** Sign in at the Render Dashboard, connect the GitHub repository `Vriddhi05/revio-ai`, and choose **New Blueprint** for the repository's `render.yaml` on `main`. Inspect the proposed Singapore region, `2c-4g` plan, and 2 GB disk. Create the service only after accepting the displayed price; this is a paid service. `autoDeployTrigger: off` keeps future commits from deploying automatically.
-2. The Blueprint initially restricts CORS to localhost. After creating the API service, copy the actual Render service origin from its dashboard and verify `https://<actual-render-service-origin>/health` returns `{"status":"ok","database":"ok"}`. The angle-bracket text is an instruction, not a deployed URL.
-3. Sign in to Vercel, import the same GitHub repository as a new project, and set **Root Directory** to `apps/web`. In project build settings, enable **Include source files outside the Root Directory** because `apps/web/next.config.mjs` sets its tracing root to the monorepo root. Keep the detected Next.js framework, set **Install Command** to `npm ci`, and **Build Command** to `npm run build`. Set the production environment variable `NEXT_PUBLIC_API_BASE_URL` to the actual Render API origin only (no `/api/v1` suffix), then deploy the frontend.
-4. Copy the actual Vercel production origin from Vercel and replace Render's `CORS_ALLOWED_ORIGINS` with that exact HTTPS origin, optionally followed by explicitly needed local origins. Do not use `*`. Save the variable and wait for the manual redeploy to finish.
-5. Verify the API health endpoint again, then open the actual deployed frontend and check Overview, Reviews Inbox, Crisis Monitor, Location Analytics, Knowledge Base, and Response Studio. Upload/index only the provided fictional policy examples, then generate a response for a synthetic review and verify its citations, workflow, edit, approval, and audit flow. Check mobile-width rendering and browser console/network errors. Do not approve or send anything to an external review platform; the app has no publishing integration.
-6. Record the actual Vercel and Render URLs in this document and the assessment reports only after those checks pass. No live URLs are recorded here yet.
+The Codespaces setup installs FastAPI, the RAG and LangGraph dependencies, and frontend dependencies from the repository. It selects the real tenant-filtered exact-cosine SQLite vector store, not a mock, and retains the existing E5 embeddings, citations, LangGraph Response Studio, human approval, and audit flow. No hosted LLM key is configured; drafting remains the clearly labeled deterministic demo provider.
 
-### Assessment environment variables
+## Before setup: confirm the free allowance
 
-The Render Blueprint sets the following safe demo defaults:
+1. Sign in to the personal GitHub account that owns Vriddhi05/revio-ai.
+2. Open Settings, then Billing and licensing, then Usage. Check remaining Codespaces included usage for this billing month. GitHub Free personal accounts include 120 core-hours and 15 GB-month. The repository must remain under a personal account to use that allowance. A 4-core Codespace running for 11 hours uses about 44 core-hours before setup time; actual remaining allowance may be lower.
+3. Do not add a payment method, set a positive spending limit, or accept an upgrade. If GitHub says the included quota is exhausted or asks for payment, cancel and stop. Do not create the Codespace.
+4. Sign in to Vercel and select Hobby / Free only. Do not start a Pro trial. If the account says the project or use is outside Hobby’s personal non-commercial terms, stop.
 
-- `APP_ENV=demo`
-- `DATABASE_URL=sqlite:////var/data/revio.db`
-- `KNOWLEDGE_VECTOR_BACKEND=sqlite`
-- `KNOWLEDGE_VECTOR_PATH=/var/data/knowledge-index`
-- `HF_HOME=/var/data/huggingface` and `HF_HUB_CACHE=/var/data/huggingface/hub`
-- `REVIO_SENTIMENT_PROVIDER=fallback`, `REVIO_ASPECT_PROVIDER=rules`, and `RESPONSE_LLM_PROVIDER=demo`
-- `CORS_ALLOWED_ORIGINS=http://localhost:3000,http://127.0.0.1:3000` until the actual Vercel origin is known
+See [GitHub’s included product usage](https://docs.github.com/en/billing/reference/product-usage-included) and [Codespaces included-usage behavior](https://docs.github.com/en/codespaces/troubleshooting/troubleshooting-included-usage). If free quota is exhausted and there is no payment method, GitHub restricts Codespaces rather than extending the free allowance.
 
-No secret is required for this configuration. Do not add `RESPONSE_LLM_API_KEY` unless a separate data-processing and cost decision has been made. When set, reviews and retrieved policy text are sent to that provider.
+## Create and start the backend Codespace
 
-### Deployment configuration behavior
+1. Open https://github.com/Vriddhi05/revio-ai while signed in to the personal GitHub account.
+2. Select the green Code button, open the Codespaces tab, and choose Create codespace on main. Use the latest main commit. The committed devcontainer requests 4 CPU cores, 16 GB memory, and 64 GB workspace storage; choose the matching 4-core machine if GitHub presents a machine selector. If it is unavailable, do not choose a paid option.
+3. Let the Codespace finish setup. It installs dependencies from services/api/requirements-codespaces.txt and apps/web/package-lock.json, starts the API, applies Alembic migrations, synchronizes the 45 fictional reviews, then adds and indexes the six synthetic policy files. First indexing downloads the pinned model and can take a few minutes. If setup fails, inspect /tmp/revio-api.log in the Codespace terminal and do not proceed until healthy.
+4. In the Codespace terminal run:
 
-- Render runs `bash services/api/scripts/render-build.sh` to install base FastAPI, RAG, and LangGraph requirements on Python 3.12.16. The local verified interpreter is Python 3.12.6; this newer cloud patch is in the same Python minor series and has not yet been exercised on Render.
-- `bash services/api/scripts/render-start.sh` binds Uvicorn to Render's `PORT` on `0.0.0.0` and one worker. FastAPI lifespan applies Alembic migrations and synchronizes only the explicitly synthetic demo review fixture. Both are idempotent.
-- Render's `/health` check performs a database query. It does not load or health-check the embedding model; the model is intentionally lazy-loaded.
-- `NEXT_PUBLIC_API_BASE_URL` is compiled into the browser bundle at build time. Change it in Vercel and redeploy the frontend when the API origin changes.
-- The demo `X-Tenant-Slug` header is workspace selection, not authentication. This public demo is not production-secure and can be mutated by anyone who can reach the API. Never upload real customer information, credentials, or private policies. CORS is a browser policy, not access control.
+       curl -fsS http://127.0.0.1:8000/health
+       curl -fsS -H 'X-Tenant-Slug: revio-demo' http://127.0.0.1:8000/api/v1/knowledge/documents
 
-## Provider references checked on 16 November 2026
+   Health should return {"status":"ok","database":"ok"}. The document list should contain six titles beginning DEMO / SYNTHETIC DATA with ready status.
+5. Open the Ports tab in the Codespaces editor. Port 8000 is private by default. When ready to share the demo, change only port 8000 to Public and copy its URL. The expected format is https://<codespace-name>-8000.app.github.dev; use the exact URL displayed by GitHub. A public port is anonymously reachable; see [GitHub’s port-forwarding documentation](https://docs.github.com/en/codespaces/developing-in-a-codespace/forwarding-ports-in-your-codespace).
+6. From a new browser tab, check the API origin plus /health. Do not publish the frontend until this succeeds.
 
-- [Render compute plans](https://render.com/docs/compute-plans) and [current Render pricing](https://render.com/pricing)
-- [Render persistent disk behavior and limitations](https://render.com/docs/disks)
-- [Render Blueprint reference](https://render.com/docs/blueprint-spec) and [Python version selection](https://render.com/docs/python-version)
-- [Python 3.12.16 security release](https://www.python.org/downloads/release/python-31216/)
-- [Render deployment regions](https://render.com/docs/regions)
-- [Vercel monorepo root-directory setup](https://vercel.com/docs/monorepos) and [environment variables](https://vercel.com/docs/environment-variables)
+The committed bootstrap calls the existing demo-policy endpoint, verifies the six expected synthetic Markdown sources, and checks for missing SQLite vector rows. If vectors are absent or a document has failed processing, it requests reindexing. It uses existing tenant/content-hash deduplication and stable chunk IDs. It does not seed user uploads or actual customer data.
+
+## Create the Vercel Hobby frontend
+
+1. In Vercel choose Add New, then Project. Connect GitHub if prompted, and grant access only to Vriddhi05/revio-ai when repository selection is available.
+2. Import Vriddhi05/revio-ai and select Hobby / Free. Do not choose a paid trial or upgrade.
+3. Set Root Directory to apps/web. Keep the detected Next.js framework. Set Install Command to npm ci and Build Command to npm run build. The monorepo Next config already sets the repository tracing root.
+4. Add this Production environment variable, replacing the placeholder with the exact API origin copied from Codespaces. It is a public URL, not a secret; do not add /api/v1 or a trailing path.
+
+       NEXT_PUBLIC_API_BASE_URL=https://<exact-codespace-name>-8000.app.github.dev
+
+5. Deploy on Hobby and copy the actual https://<project>.vercel.app URL shown by Vercel. Record no live URL in reports until the real deployed site has passed browser checks.
+
+See Vercel’s [Hobby plan and limits](https://vercel.com/docs/plans/hobby) and [monorepo root configuration](https://vercel.com/docs/monorepos). If a free usage cap pauses a feature, do not upgrade.
+
+## Allow the Vercel origin and restart the API
+
+Replace the placeholder with the exact Vercel production origin, then run this in the Codespace terminal:
+
+    VERCEL_ORIGIN="https://<exact-project>.vercel.app" services/api/.venv/bin/python services/api/scripts/codespaces_bootstrap.py restart
+
+The restart preserves the workspace SQLite data and vector index, applies explicit-origin CORS, checks API health, verifies the 45-review source and six policy sources, and rebuilds missing synthetic vectors. Do not use a wildcard CORS origin. Check /health and run a knowledge search again before sharing the Vercel URL.
+
+## Public review checklist after account setup
+
+No public checks are claimed yet. After the owner creates the services and provides the actual URLs, verify:
+
+- API GET /health returns the database health response.
+- Overview, Reviews Inbox, Crisis Monitor, Location Analytics, Knowledge Base, and Response Studio load without uncaught browser errors.
+- Inbox and analytics show the 45 clearly labeled Indian synthetic reviews across Jaipur, Chandigarh, and Ludhiana.
+- Knowledge search returns actual passages from the six indexed synthetic policy documents with source citations and page/reference metadata; an unrelated query abstains.
+- Generate a draft for a synthetic review; verify LangGraph steps, citations, validation warnings, edit, human approve/reject, and audit entry. Approval is internal only and does not publish a reply.
+- Inspect browser console/network errors, API logs, and mobile-width layout. Record only actual observed URLs and results.
+
+## Limitations and future scaling
+
+- Codespaces has included monthly quotas, idle shutdown, and a 12-hour maximum lifetime. It is suitable only for a time-bounded demo while the owner keeps the Codespace available; it is not durable hosting and has no SLA.
+- SQLite, uploads, and vector rows survive a normal Codespace stop/start but are lost if the Codespace is deleted or rebuilt. The 45 review and six policy fixtures are reproducible; user uploads are not.
+- The public API has no application authentication. The demo tenant header is workspace selection only. Use synthetic data only.
+- Vercel Hobby is personal and non-commercial and has included-usage caps. Confirm eligibility and remaining account quotas.
+- No hosted LLM credentials exist. Response generation remains a deterministic, labeled demo fallback. Do not claim live model generation.
+- The public demo has no durable queue, monitoring, backups, protected customer-data boundary, or review-platform integration.
+- A later approved production deployment should add authenticated tenant membership, durable relational and object storage, a server-backed vector service, queued background work, backups, rate limits, and resource monitoring. That is outside the zero-budget assessment deployment.

@@ -13,7 +13,7 @@ Reputation intelligence for teams that care about every customer conversation.
 
 ## Deployment status
 
-REVIO has **not been deployed publicly**. No public app or API URLs have been assigned, and no hosting resources have been created. The repository contains a manual-only Render API Blueprint and deployment instructions; deploying the API requires explicit owner approval for paid hosting. Do not enter real customer data in this demonstration workspace.
+REVIO has **not been deployed publicly**. No public app or API URLs have been assigned, and no hosting resources have been created. The zero-budget deployment preparation uses Vercel Hobby for the frontend and a temporary personal GitHub Codespace for the API, subject to free-quota availability and Vercel's personal non-commercial terms. Render Free was rejected because its 512 MB memory limit is below the measured model/API footprint. See [deployment instructions](docs/deployment.md). Do not enter real customer data in this demonstration workspace.
 
 REVIO supports CSV review preview and import, persistent tenant-scoped review storage, duplicate detection, a searchable Reviews Inbox, review details and status updates, database-backed Overview metrics, persisted multilingual review analysis, signal-only crisis monitoring, and location analytics. The API seeds 45 clearly labeled DEMO / SYNTHETIC DATA reviews across Jaipur, Rajasthan, India; Chandigarh, India; and Ludhiana, Punjab, India. The fictional examples use Indian customer names and cover restaurants, cafes, hotels, fitness centres, retail, and food delivery. No live review integrations are connected.
 

@@ -7,17 +7,17 @@
 ```mermaid
 flowchart LR
     B[Browser] -->|Next.js UI| V[Vercel project<br/>root: apps/web]
-    V -->|HTTPS JSON + X-Tenant-Slug| API[FastAPI<br/>single Render web process]
-    API --> DB[(SQLAlchemy + Alembic<br/>SQLite on persistent disk)]
+    V -->|HTTPS JSON + X-Tenant-Slug| API[FastAPI<br/>temporary GitHub Codespace]
+    API --> DB[(SQLAlchemy + Alembic<br/>SQLite in Codespace workspace)]
     API --> IDX[(Tenant-filtered exact cosine<br/>SQLite vector index)]
-    API --> HF[(Pinned E5 model cache<br/>persistent disk)]
+    API --> HF[(Pinned E5 model cache<br/>Codespace home directory)]
     API --> GRAPH[LangGraph response StateGraph]
     GRAPH --> RET[Shared tenant-scoped RAG retrieval]
     GRAPH --> DEMO[Safe deterministic draft default]
     GRAPH -. optional configured endpoint .-> LLM[OpenAI-compatible chat endpoint]
 ```
 
-The monorepo uses Next.js with JavaScript-only application files under `apps/web`, Python/FastAPI under `services/api`, SQLAlchemy/Alembic for relational records, and Sentence Transformers for embeddings. The API default is SQLite. The prepared public demo retains SQLite rather than forcing account setup for managed PostgreSQL; its database and vector index share a persistent disk. PostgreSQL remains the intended relational production migration target. See the individual milestone sections in [`technical-report.md`](technical-report.md).
+The monorepo uses Next.js with JavaScript-only application files under `apps/web`, Python/FastAPI under `services/api`, SQLAlchemy/Alembic for relational records, and Sentence Transformers for embeddings. The API default is SQLite. The prepared time-bounded assessment demo uses SQLite and the persistent exact-cosine vector fallback in a personal Codespace workspace; PostgreSQL remains the intended relational production migration target. See the individual milestone sections in [`technical-report.md`](technical-report.md).
 
 The browser client sends `X-Tenant-Slug: revio-demo`. This selects the fictional workspace; it is not authentication, authorization, or an acceptable production tenancy boundary. The prepared instance is for a clearly labeled synthetic demonstration only.
 
@@ -66,20 +66,20 @@ Humans can edit, approve for internal use, or reject. No publish endpoint exists
 - The public assessment service must contain synthetic information only. It is not a secure customer-data service; unauthenticated writes and missing rate limits remain risks.
 - No live integrations, OCR, external publishing, authentication, rate limiting, or durable queue are part of the implementation.
 
-## Proposed deployment and operations
+## Proposed zero-budget deployment and operations
 
-The prepared configuration is `render.yaml` plus the Render build/start scripts. Render Python is pinned to `3.12.16` to keep the verified 3.12 dependency series and avoid the provider's changing default. The local test interpreter is 3.12.6; the newer cloud patch has not yet been deployed or runtime-verified. Build installs base, RAG, and agent dependencies. Start runs one Uvicorn worker on Render's `PORT`; FastAPI lifespan applies Alembic and idempotent synthetic seed logic. The health check uses `/health`.
+The prepared backend configuration is .devcontainer/devcontainer.json, services/api/requirements-codespaces.txt, and services/api/scripts/codespaces_bootstrap.py. It requests a 4-core, 16 GB GitHub Codespace, uses one Uvicorn worker, and keeps SQLite plus the exact-cosine vector index in the workspace. FastAPI lifespan applies Alembic and synchronizes the 45 committed synthetic reviews. The bootstrap adds the six committed synthetic policy files and verifies or rebuilds missing vector rows with the existing embedding pipeline. Codespaces stop/start preserves workspace files; deleting or rebuilding the Codespace loses user-uploaded data, while the committed fictional fixture can be reconstructed.
 
-The Render service explicitly uses `KNOWLEDGE_VECTOR_BACKEND=sqlite`, with database at `/var/data/revio.db`, vectors below `/var/data/knowledge-index`, and model cache under `/var/data/huggingface`. These paths require the attached `/var/data` persistent disk. The E5 model remains lazy; indexing may cause a one-time model download and memory warm-up. The deployment is single instance because the data disk is service-local. Render auto-deploy is off.
+Render Free is not selected. Its published 512 MB memory cap is lower than REVIO's 648.07 MB E5 model RSS measurement, and it provides no persistent disk. A full local API diagnostic with multilingual MiniLM L12 measured 689.89 MB after query embedding. These are local measurements, not Render benchmarks; the current service cannot be shown to fit Render Free safely. No smaller or mock retriever is substituted. The model, scores, latency, and model-file size remain in the committed retrieval evaluation.
 
-The web project is configured in the Vercel dashboard with monorepo root `apps/web`. `NEXT_PUBLIC_API_BASE_URL` is a build-time browser setting and must be set to the actual API HTTPS origin before the Vercel production build. `CORS_ALLOWED_ORIGINS` is a comma-separated explicit-origin allowlist set to the actual Vercel origin after it exists. Wildcard origins are rejected by application settings. CORS does not replace authentication.
+The frontend remains a Vercel Hobby project with monorepo root apps/web. NEXT_PUBLIC_API_BASE_URL is compiled into the browser bundle and must be set to the actual public Codespaces API origin before the production build. After Vercel assigns a URL, restart the API with VERCEL_ORIGIN set so CORS_ALLOWED_ORIGINS contains that exact HTTPS origin. Wildcard origins are rejected; CORS does not replace authentication.
 
-As of 16 November 2026, the current Render listing is $85/month for the `2c-4g` web plan; a 2 GB disk at $0.25/GB/month adds $0.50/month. The proposed backend total is therefore **$85.50/month**, before taxes and other usage. Vercel plan and any future hosted LLM charges are excluded. This is a published-price estimate, not an invoice. No hosting account action or paid service has been created. See [`deployment.md`](deployment.md) for owner setup steps and verified URL capture.
+The plan uses only included personal GitHub Codespaces quota and Vercel Hobby usage. No public service has been created and no live URLs are known. Codespaces have a 12-hour maximum lifetime and idle shutdown; this is temporary assessment compute, not reliable public hosting. GitHub Free personal accounts list 120 Codespaces core-hours and 15 GB-month storage. At 4 cores, 11 hours would use about 44 core-hours before setup; the owner's remaining allowance is unknown and must be checked before creation. Vercel Hobby is personal and non-commercial; the owner must confirm assessment use qualifies. Do not add a payment method, create a paid trial, or exceed the included allowance. See deployment.md for owner setup steps.
 
-Render's disk-backed single-instance arrangement cannot be horizontally scaled, shared with another instance, or redeployed with zero downtime. Production scaling should migrate the relational database to managed PostgreSQL, file uploads to durable object storage, and vectors to a server-backed vector database; then add authenticated tenant membership, durable queue-backed indexing, backups, observability, request limits, and independent evaluation sets before broad use.
+Production scaling should move relational data to managed PostgreSQL, uploaded content to object storage, and vectors to a server-backed vector database; then add authenticated tenant membership, durable queued processing, backups, observability, request limits, and independent evaluation sets before broad use.
 
 ## Local verification and evaluation references
 
-Final local verification after deployment preparation: 52 backend tests passed, frontend ESLint passed, and the Next.js production build passed. Headless Chrome rendered the local production Response Studio against synthetic data. These are local checks, not public deployment validation. Public page, mobile browser, cross-origin, and end-to-end checks remain pending owner provisioning.
+Final zero-budget preparation checks passed locally: 52 backend tests, frontend ESLint, and the Next.js production build. An isolated API smoke check returned database health, 45 reviews across three Indian locations, six ready synthetic policies, a real UPI source citation, and a six-node LangGraph Response Studio draft that was approved and audited. A prior headless Chrome check rendered the local Response Studio; no public browser, mobile, cross-origin, or live deployment checks have been performed.
 
 Evaluation artifacts: [`milestone-3-evaluation.json`](evaluation/milestone-3-evaluation.json), [`milestone-3-muril-evaluation.json`](evaluation/milestone-3-muril-evaluation.json), and [`knowledge_retrieval_results.json`](../data/evaluation/knowledge_retrieval_results.json). The exact external Cynbit rubric was not included with the current task, so this report maps to the assessment categories explicitly listed by the owner rather than claiming rubric-by-rubric certification.

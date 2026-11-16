@@ -1,0 +1,9 @@
+# Zero-cost GitHub Codespaces demo dependencies.
+# The persistent exact-cosine SQLite vector store is used here, so ChromaDB is
+# intentionally omitted. Keep the multilingual Sentence Transformers model,
+# LangGraph response workflow, and the same API behavior as local development.
+-r requirements.txt
+-r requirements-agent.txt
+-r requirements-ai.txt
+pypdf==6.21.4
+sentence-transformers==5.7.0
