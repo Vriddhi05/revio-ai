@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import Link from "next/link";
 import { ChevronLeft, ChevronRight, CircleAlert, Search, SlidersHorizontal, Sparkles, Star, X } from "lucide-react";
 import SectionHeading from "../../components/ui/SectionHeading";
 import { apiRequest } from "../../lib/api";
@@ -117,6 +118,7 @@ export default function ReviewsInboxPage() {
           </section> : <div className="analysis-pending">No saved analysis for this review yet. Use Analyze reviews to classify workspace feedback.</div>}
           <dl className="detail-fields"><div><dt>Customer</dt><dd>{selected.author_name || "Anonymous"}</dd></div><div><dt>Review date</dt><dd>{dateLabel(selected.review_date)}</dd></div><div><dt>Location</dt><dd>{selected.location.name}</dd></div><div><dt>Source</dt><dd>{selected.source_name}</dd></div><div><dt>Record origin</dt><dd>{selected.import_metadata.record_origin}</dd></div><div><dt>Import file</dt><dd>{selected.import_metadata.filename || "—"}</dd></div><div><dt>Imported</dt><dd>{new Date(selected.import_metadata.imported_at).toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" })}</dd></div><div><dt>External review ID</dt><dd>{selected.external_review_id || "—"}</dd></div></dl>
           <label className="status-update"><span>Update status</span><select value={selected.status} onChange={(event) => updateStatus(event.target.value)}><option value="new">New</option><option value="needs_attention">Needs attention</option><option value="resolved">Resolved</option></select></label>
+          <Link className="button button-dark response-entry-button" href={`/response-studio?review=${encodeURIComponent(selected.id)}`}><Sparkles size={14} />Draft a response</Link>
         </> : <div className="detail-placeholder"><span className="detail-placeholder-icon"><Star size={19} /></span><h2>Select a review</h2><p>Choose a review to see its full text, source and import details.</p></div>}
       </aside>
     </section>

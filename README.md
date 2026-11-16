@@ -2,7 +2,7 @@
 
 Reputation intelligence for teams that care about every customer conversation.
 
-## Current milestone: RAG knowledge engine
+## Current milestone: Agentic AI Response Studio
 
 REVIO supports CSV review preview and import, persistent tenant-scoped review storage, duplicate detection, a searchable Reviews Inbox, review details and status updates, database-backed Overview metrics, persisted multilingual review analysis, signal-only crisis monitoring, and location analytics. The API seeds 45 clearly labeled DEMO / SYNTHETIC DATA reviews across Jaipur, Rajasthan, India; Chandigarh, India; and Ludhiana, Punjab, India. The fictional examples use Indian customer names and cover restaurants, cafes, hotels, fitness centres, retail, and food delivery. No live review integrations are connected.
 
@@ -10,7 +10,7 @@ Review analysis stores positive, neutral, or negative sentiment; confidence meta
 
 The Crisis Monitor identifies configured changes and recurrence patterns from persisted analyses. It clearly labels them as unconfirmed signals. Location analytics are calculated from stored reviews and current analysis records. Results are cached by tenant, review text hash, and model pipeline version.
 
-The Knowledge Base accepts extractable-text PDF, UTF-8 TXT, and Markdown policy documents, versions and hashes their normalized contents, chunks them with overlap, and indexes persistent embeddings. Search returns tenant-scoped passages with source, page, version, similarity, and retrieval metadata; it abstains when nothing meets the configured threshold. Six clearly labeled fictional Indian policy examples can be added to the demo workspace from the UI. This milestone does not generate customer replies, invoke LangGraph, or implement human response approval. Scanned PDFs are not OCR-supported, and no live review integrations are connected.
+The Knowledge Base accepts extractable-text PDF, UTF-8 TXT, and Markdown policy documents, versions and hashes their normalized contents, chunks them with overlap, and indexes persistent embeddings. Search returns tenant-scoped passages with source, page, version, similarity, and retrieval metadata; it abstains when nothing meets the configured threshold. Six clearly labeled fictional Indian policy examples can be added to the demo workspace from the UI. The Response Studio uses a typed LangGraph StateGraph to load and analyze one review, retrieve tenant-scoped policy evidence, draft a language-matched reply, validate selected factuality risks, and persist a versioned draft. The UI exposes source citations, workflow step status and timing, editing, approval or rejection, and an audit trail. Approval is internal only; REVIO does not publish replies to review platforms. Scanned PDFs are not OCR-supported, and no live review integrations are connected.
 
 ## Requirements
 
@@ -27,6 +27,7 @@ py -3 -m venv services/api/.venv
 services/api/.venv/Scripts/python.exe -m pip install --upgrade pip
 services/api/.venv/Scripts/python.exe -m pip install -r services/api/requirements.txt
 services/api/.venv/Scripts/python.exe -m pip install -r services/api/requirements-rag.txt
+services/api/.venv/Scripts/python.exe -m pip install -r services/api/requirements-agent.txt
 cd services/api
 uvicorn app.main:app --reload
 ```
@@ -38,6 +39,8 @@ The first startup creates the `revio-demo` workspace, its local demo membership,
 The RAG stack is installed separately with `requirements-rag.txt`. On first indexing, Sentence Transformers downloads the pinned embedding model to the local Hugging Face cache; API startup itself does not download model weights. Set `KNOWLEDGE_VECTOR_BACKEND` in `services/api/.env` to `auto`, `chroma`, or `sqlite`. `auto` uses persistent Chroma on non-Windows hosts. On Windows, REVIO uses its persistent exact-cosine SQLite vector fallback because Chroma's local vector write stalled in the verified Python 3.12 environment. The fallback is intended for local development and small demos; Linux production should use Chroma. The limitation and measurements are recorded in [`docs/knowledge-retrieval-report.md`](docs/knowledge-retrieval-report.md).
 
 After opening the app, go to **Knowledge base**. Upload a PDF with selectable text, TXT, or Markdown file (10 MB maximum), or add the six fictional Indian sample policies. Search in Indian English, Hindi, or Hinglish. The demo data is clearly titled `DEMO / SYNTHETIC DATA`; remove it with the document delete action when no longer needed. Text-only PDFs are supported; scanned PDFs without extractable text are rejected because OCR is not implemented.
+
+Open **Response studio** or use **Draft a response** from a review detail. By default, drafts use a deterministic, clearly labeled safe demo template. To use a hosted OpenAI-compatible chat-completions endpoint, set `RESPONSE_LLM_PROVIDER=openai_compatible`, `RESPONSE_LLM_API_KEY`, `RESPONSE_LLM_BASE_URL`, and `RESPONSE_LLM_MODEL` in the ignored local `services/api/.env`. Review text and retrieved policy passages will then be sent to that configured provider. With no key, generation stays on the demo template. Drafts remain local to the workspace; human approval never sends or publishes them. The guardrail check is heuristic and is not a proof of factuality, so reviewers must verify the source passages and final wording.
 
 - Health: <http://127.0.0.1:8000/health>
 - API docs: <http://127.0.0.1:8000/docs>
@@ -77,6 +80,13 @@ All workspace endpoints accept `X-Tenant-Slug`; the local demo client uses `revi
 | `POST` | `/api/v1/knowledge/documents/{document_id}/reindex` | Rebuild stable chunks and embeddings for one document version |
 | `POST` | `/api/v1/knowledge/search` | Retrieve relevant passages with citations or abstain |
 | `POST` | `/api/v1/knowledge/demo-documents` | Idempotently add fictional Indian policy examples to the demo workspace |
+| `POST` | `/api/v1/reviews/{review_id}/responses/generate` | Run the LangGraph workflow and save a versioned tenant-scoped response draft |
+| `GET` | `/api/v1/reviews/{review_id}/responses` | List tenant-scoped drafts for a review, newest first |
+| `GET` | `/api/v1/responses/{draft_id}` | Read a tenant-scoped response draft, workflow trace, analysis and citations |
+| `PATCH` | `/api/v1/responses/{draft_id}` | Save a human edit while the response remains a draft |
+| `POST` | `/api/v1/responses/{draft_id}/approve` | Mark a draft approved for internal use (does not publish) |
+| `POST` | `/api/v1/responses/{draft_id}/reject` | Reject a draft and retain the decision in its audit history |
+| `GET` | `/api/v1/responses/{draft_id}/audit` | Read tenant-scoped generation, edit and decision events |
 
 CSV imports require `review_text` and `rating`. Optional columns include `author_name`, `review_date`, `location`, `source`, `external_review_id`, and `is_synthetic`. UTF-8 CSV files up to 10 MB and 10,000 rows are supported. Ratings must be between 1 and 5 in half-star increments. The importer validates the full file, shows an upload preview, and uses tenant-scoped review fingerprints to prevent repeated rows from being stored twice. The downloadable sample contains 45 fictional Indian reviews, including Indian English, Hinglish, and Hindi text; all rows are marked synthetic.
 
@@ -92,6 +102,12 @@ The Milestone 3 endpoints are:
 - POST /api/v1/crisis/scan — scan the configured time window for negative rises, recurring complaint themes, and severe cross-location patterns.
 - PATCH /api/v1/crisis/alerts/{alert_id}/status — acknowledge or resolve a signal.
 - GET /api/v1/analytics/location-intelligence — compare stored ratings, sentiment, complaint categories, urgency, and negative trends by location.
+
+### Response Studio workflow
+
+The LangGraph StateGraph runs six visible steps in order: `load_review`, `analyze_review`, `retrieve_policy_evidence`, `generate_response`, `validate_response`, and `save_draft`. It reuses the saved review-intelligence pipeline and the same multilingual semantic retrieval service as Knowledge Base search. The graph stores per-step state, duration, safe error codes, and warnings with the draft. If no relevant policy passage is found, the response uses a cautious acknowledgement and avoids a policy claim, refund promise, amount, or timeline. High and critical reviews are marked for human escalation; the graph does not claim that an escalation action has already happened.
+
+Response drafts are versioned by tenant and review. Human edits and approval/rejection transitions create audit events. Only drafts or edited drafts can be approved or rejected. The UI makes no external publish call. The local `demo-operator` audit identity is a placeholder because the demo tenant header is not production authentication; production must bind the actor to verified identity and authorization.
 
 ## Checks
 

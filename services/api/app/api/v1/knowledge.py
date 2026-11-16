@@ -14,6 +14,7 @@ from app.schemas.knowledge import DemoKnowledgeSeedOut, KnowledgeDocumentOut, Kn
 from app.services.knowledge_documents import DocumentError, extract_document
 from app.services.knowledge_embeddings import QueryTooLongError, get_encoder
 from app.services.knowledge_indexing import index_document
+from app.services.knowledge_retrieval import retrieve_knowledge
 from app.services.knowledge_vectors import get_store
 
 router = APIRouter(prefix="/api/v1/knowledge", tags=["knowledge"])
@@ -248,71 +249,14 @@ def reindex_knowledge_document(
 
 @router.post("/search", response_model=KnowledgeSearchOut)
 def search_knowledge(payload: KnowledgeSearchIn, tenant: CurrentTenant, db: DbSession) -> KnowledgeSearchOut:
-    settings = get_settings()
-    ready_ids = db.scalars(
-        select(KnowledgeDocument.id).where(
-            KnowledgeDocument.tenant_id == tenant.id,
-            KnowledgeDocument.status == "ready",
-        )
-    ).all()
-    base_metadata = {
-        "embedding_model": settings.knowledge_embedding_model,
-        "embedding_revision": settings.knowledge_embedding_revision,
-        "similarity_metric": "cosine similarity (1 - cosine distance)",
-        "tenant_filter_enforced": True,
-        "minimum_similarity": settings.knowledge_min_similarity,
-        "untrusted_source_handling": "Heuristic flags are advisory; retrieved text remains untrusted evidence.",
-    }
-    if not ready_ids:
-        return KnowledgeSearchOut(
-            query=payload.query,
-            results=[],
-            abstained=True,
-            abstention_reason="No processed knowledge documents are available in this workspace.",
-            retrieval_metadata={**base_metadata, "candidate_count": 0},
-        )
     try:
-        encoder = get_encoder()
-        query_vector = encoder.embed_query(payload.query)
-        store = get_store()
-        raw_hits = store.search(tenant.id, list(ready_ids), query_vector, payload.top_k)
-        base_metadata["vector_store_backend"] = getattr(store, "backend_name", "chromadb-persistent")
+        return retrieve_knowledge(
+            db, tenant.id, payload.query, payload.top_k,
+            encoder_factory=get_encoder,
+            store_factory=get_store,
+        )
     except QueryTooLongError as exc:
         raise HTTPException(status_code=422, detail={"code": "query_too_long", "message": str(exc)}) from exc
     except Exception as exc:
         logger.exception("Knowledge search failed for tenant %s", tenant.slug)
         raise HTTPException(status_code=503, detail={"code": "knowledge_search_unavailable", "message": "Knowledge search is temporarily unavailable."}) from exc
-
-    threshold = settings.knowledge_min_similarity
-    hits = [hit for hit in raw_hits if hit["similarity"] >= threshold]
-    results = []
-    for hit in hits:
-        metadata = hit["metadata"]
-        try:
-            risk_flags = json.loads(metadata.get("risk_flags") or "[]")
-        except (TypeError, json.JSONDecodeError):
-            risk_flags = []
-        results.append(KnowledgeSearchHit(
-            passage=hit["text"],
-            document_id=metadata["document_id"],
-            document_title=metadata["title"],
-            source_filename=metadata["source_filename"],
-            source_reference=metadata["source_reference"],
-            page_number=metadata.get("page_number"),
-            similarity_score=round(hit["similarity"], 5),
-            retrieval_metadata={
-                "cosine_distance": round(hit["distance"], 5),
-                "document_version": metadata["version"],
-                "chunk_index": metadata["chunk_index"],
-                "content_sha256": metadata["content_sha256"],
-                "untrusted_source": True,
-                "risk_flags": risk_flags,
-            },
-        ))
-    return KnowledgeSearchOut(
-        query=payload.query,
-        results=results,
-        abstained=not results,
-        abstention_reason="No passage met the configured relevance threshold; no evidence is available for this query." if not results else None,
-        retrieval_metadata={**base_metadata, "candidate_count": len(raw_hits), "returned_count": len(results)},
-    )

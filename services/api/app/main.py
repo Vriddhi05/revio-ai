@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 
 from app.api.v1.router import router as v1_router
 from app.api.v1.knowledge import router as knowledge_router
+from app.api.v1.responses import router as responses_router
 from app.core.config import get_settings
 from app.db.init_db import initialize_database
 from app.db.session import get_db
@@ -30,6 +31,7 @@ app.add_middleware(
 )
 app.include_router(v1_router)
 app.include_router(knowledge_router)
+app.include_router(responses_router)
 
 
 @app.exception_handler(HTTPException)

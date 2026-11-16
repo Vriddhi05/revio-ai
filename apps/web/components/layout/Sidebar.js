@@ -17,7 +17,7 @@ import {
 const navigation = [
   { label: "Overview", href: "/", icon: LayoutDashboard },
   { label: "Reviews inbox", href: "/reviews", icon: MessageSquareText },
-  { label: "Response studio", href: "/response-studio", icon: Sparkles, disabled: true },
+  { label: "Response studio", href: "/response-studio", icon: Sparkles },
   { label: "Crisis monitor", href: "/crisis-monitor", icon: ShieldAlert },
   { label: "Location analytics", href: "/locations", icon: BarChart3 },
   { label: "Knowledge base", href: "/knowledge-base", icon: BookOpenText },

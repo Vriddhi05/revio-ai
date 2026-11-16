@@ -1,0 +1,3 @@
+# LangGraph powers the explicit, typed response drafting StateGraph.
+# Hosted inference uses the existing httpx dependency with an OpenAI-compatible endpoint.
+langgraph==1.2.22

@@ -421,10 +421,12 @@ def serialize_current_analysis(review: Review) -> dict[str, Any] | None:
     return None
 
 
-def analyze_reviews(db: Session, tenant_id: str, limit: int = 250, force: bool = False) -> dict[str, Any]:
+def analyze_reviews(db: Session, tenant_id: str, limit: int = 250, force: bool = False, review_id: str | None = None) -> dict[str, Any]:
+    query = select(Review).options(selectinload(Review.analysis_records)).where(Review.tenant_id == tenant_id)
+    if review_id is not None:
+        query = query.where(Review.id == review_id)
     reviews = db.scalars(
-        select(Review).options(selectinload(Review.analysis_records))
-        .where(Review.tenant_id == tenant_id)
+        query
         .order_by(Review.review_date.desc().nullslast(), Review.imported_at.desc()).limit(limit)
     ).all()
     target_version = configured_sentiment_pipeline_version()

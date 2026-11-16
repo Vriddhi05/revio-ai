@@ -9,6 +9,7 @@ export default function Topbar() {
     : pathname === "/crisis-monitor" ? "Crisis monitor"
       : pathname === "/locations" ? "Location analytics"
         : pathname === "/knowledge-base" ? "Knowledge base"
+        : pathname === "/response-studio" ? "Response studio"
         : pathname === "/" ? "Overview" : "Workspace";
   return (
     <header className="topbar">

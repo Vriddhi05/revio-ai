@@ -65,3 +65,32 @@ ChromaDB is the preferred production vector store. The tested Windows/Python 3.1
 - Production frontend on port 3100 was opened in Chrome. Overview rendered the stored 45-review dashboard and three Indian locations; Reviews Inbox rendered all 45 fictional records, sentiment labels, and a populated detail panel; Crisis Monitor completed a scan of 45 reviews and reported zero current patterns. No application error was visible in these views. Browser DevTools console output was not captured.
 - Live analysis used the configured deterministic fallback. The MuRIL offline evaluation above is a separate measurement and did not change the demo database or default provider.
 - A successful build or this evaluation is not a security certification.
+
+## Milestone 5: Agentic AI Response Studio
+
+### Implemented
+
+- Added a typed LangGraph `StateGraph`, pinned to `langgraph==1.2.22`, with the ordered nodes `load_review`, `analyze_review`, `retrieve_policy_evidence`, `generate_response`, `validate_response`, and `save_draft`. The graph reuses the existing review analysis service and the same tenant-scoped semantic retrieval service as Knowledge Base search.
+- Added migration `0005_response_studio` and persistent, versioned response drafts. Drafts store the original and current text, review-analysis snapshot, tenant-filtered citations, workflow trace, validation notes, provider/model labels, and human decision timestamps.
+- Added tenant-scoped generate, list, detail, edit, approve, reject, and audit APIs. Only `draft` and `edited` responses can be approved or rejected. Approval records an internal state transition and does not publish externally.
+- Added an editorial Response Studio page, enabled sidebar navigation, and a Reviews Inbox entry point. It shows the source review, saved intelligence, demo/provider label, citations, every graph step and timing, edit/decision controls, and the audit history using the existing cream/teal/coral design system.
+- Added an OpenAI-compatible chat-completions provider configurable through environment settings. The checked-in example defaults to deterministic demo mode and contains no key. When hosted mode is selected without credentials, or a provider call fails, the draft clearly identifies the deterministic fallback. Hosted calls send review text and retrieved passages to the configured provider; do not enable that mode without an appropriate data-processing decision.
+- Added selected heuristic checks for unsupported amounts, timelines, and refund/approval commitments. A failed check replaces the candidate with a cautious language-matched acknowledgement. These checks are bounded heuristics, not semantic factuality verification or complete prompt-injection protection. Retrieved documents and review text remain untrusted; high and critical reviews are marked for human escalation without claiming an escalation was already performed.
+- Added seven response workflow tests. The end-to-end test takes the existing fictional PhonePe review `REVIO-IN-DEMO-005`, checks analysis and a cited retrieval result, verifies all six LangGraph steps, then edits, approves, and inspects the audit trail. Tenant isolation, empty evidence, state transitions, hosted-provider configuration, risk escalation, and language-matched templates are covered.
+
+### Observed local run
+
+- LangGraph `1.2.22` and its dependencies installed in the local API virtual environment; no provider SDK was added because hosted inference uses the existing `httpx` dependency.
+- Alembic reports `0005_response_studio (head)`. The API on an isolated verification port returned `{"status":"ok","database":"ok"}`; the demo DB contained all 45 reviews and the three Indian locations.
+- Six fictional Indian policies were indexed with the configured `intfloat/multilingual-e5-small` model. A live semantic query for the stored Jaipur PhonePe/UPI review returned five passages, including `upi-refunds.md`; the live draft stored five citations and completed all six graph nodes.
+- The local run used `demo_fallback` because no hosted provider was configured. Its classifier marked this review neutral with medium urgency; that is the actual configured classifier output, not a hand-adjusted label. No hosted generation, paid inference, approval publication, or external integration was exercised.
+- The test suite verified edit and approval transitions and audit events. No response-quality benchmark or new latency distribution was run for this milestone; M4 retrieval measurements remain separate and should not be read as response-quality results.
+- Backend regression suite: 50 passed. Frontend ESLint: passed. Next.js production build: passed with `/response-studio` included.
+- Headless Chrome ran the current production build at `/response-studio?review=...`, executed the client workflow view, and rendered the stored PhonePe review, draft label, six completed graph steps, citations, and approval controls. The inspected screenshot retained the approved editorial sidebar and cream/teal/coral palette. No matching uncaught exception, failed fetch, or application-error line appeared in Chrome stderr. Interactive DevTools console capture was unavailable. Existing port 3000 was an older process returning the not-found page; this verification used the current build on port 3101 and API on port 8010.
+
+### Remaining production work and limits
+
+- The `X-Tenant-Slug` header remains demo workspace selection, not authentication. The audit actor is the explicit placeholder `demo-operator`; production must bind draft and audit access to verified tenant membership and actor identity.
+- The default demo provider is a deterministic template and does not claim to be an LLM. Configured hosted provider behavior requires credentials and was not live-tested here.
+- Factuality validation is heuristic; a human must check each cited passage, the final text, and high-severity cases. The app does not create support tickets, trigger actual escalation, or publish responses.
+- Graph execution currently runs synchronously in the API request process. A durable queue and retries are future scaling work; Redis/Celery are not used in this milestone.
