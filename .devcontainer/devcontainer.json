@@ -6,11 +6,6 @@
       "version": "22"
     }
   },
-  "hostRequirements": {
-    "cpus": 4,
-    "memory": "16gb",
-    "storage": "64gb"
-  },
   "onCreateCommand": "bash .devcontainer/setup.sh",
   "postStartCommand": "services/api/.venv/bin/python services/api/scripts/codespaces_bootstrap.py start",
   "forwardPorts": [8000],

@@ -50,7 +50,7 @@ The response workflow's quality has not been benchmarked. The live M5 run used t
 
 The local evaluation made no hosted AI calls, so hosted model inference charges for those evaluation runs were $0.00. Local compute, electricity, storage, and bandwidth are not priced. Response-provider costs remain unknown because no provider, model account, or live traffic profile was configured.
 
-No hosting resources have been created, so current deployment spend is $0. The proposed Vercel Hobby plus personal GitHub Codespaces route can use $0 of additional spend only while the owner's included free quotas remain available and the assessment use qualifies for Vercel Hobby's personal, non-commercial terms. GitHub Free personal accounts list 120 Codespaces core-hours and 15 GB-month storage; a 4-core Codespace consumes four core-hours for each running hour. Account balance and actual service use have not been verified. Do not add a payment method, start a paid trial, or claim a guaranteed free public SLA. Details and provider sources are in deployment.md.
+No hosting resources have been created, so current deployment spend is $0. The proposed Vercel Hobby plus personal GitHub Codespaces route can use $0 of additional spend only while the owner's included free quotas remain available and the assessment use qualifies for Vercel Hobby's personal, non-commercial terms. GitHub Free personal accounts list 120 Codespaces core-hours and 15 GB-month storage; compute consumption depends on the machine selected. Account balance and actual service use have not been verified. Do not add a payment method, start a paid trial, or claim a guaranteed free public SLA. Details and provider sources are in deployment.md.
 
 ## Scaling path
 
