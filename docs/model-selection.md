@@ -26,3 +26,5 @@ The semantic checkpoint shown in the repository is 471 MB per format, while the 
 ## REVIO evaluation
 
 data/evaluation/indian_review_intelligence.jsonl is a separate manually labeled fictional set. Run python scripts/evaluate_intelligence.py --output ../../docs/evaluation/milestone-3-evaluation.json from services/api to measure the configured pipeline. Add --semantic only when the optional semantic checkpoint is available. The emitted metrics are scoped to that small set and local machine; they do not establish production accuracy or generalize across all Indian English/Hinglish reviews.
+
+The 17 November 2026 local verification rerun used the deterministic fallback on the same 36 fictional labeled examples and reproduced 63.89% sentiment accuracy, 65.35% macro F1, and 88.17% macro aspect F1. Per-record fallback latency on this run was 0.044 ms median / 0.090 ms p95. These are CPU timings from the local Windows workspace, not transformer results or hosted API latency. Updated output is in `docs/evaluation/milestone-3-evaluation.json`.

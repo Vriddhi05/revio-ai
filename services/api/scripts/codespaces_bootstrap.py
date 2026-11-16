@@ -18,6 +18,7 @@ API_ROOT = Path(__file__).resolve().parents[1]
 REPOSITORY_ROOT = API_ROOT.parents[1]
 API_PORT = int(os.environ.get("REVIO_API_PORT", "8000"))
 API_URL = os.environ.get("REVIO_BOOTSTRAP_API_URL", f"http://127.0.0.1:{API_PORT}").rstrip("/")
+DEFAULT_VERCEL_ORIGIN = "https://revio-ai-smoky.vercel.app"
 TENANT_HEADERS = {"X-Tenant-Slug": "revio-demo"}
 DEMO_POLICY_FILES = {
     "upi-refunds.md",
@@ -53,8 +54,9 @@ def _request(path: str, *, method: str = "GET", body: bytes | None = None, timeo
         except (UnicodeDecodeError, json.JSONDecodeError):
             detail = payload.decode("utf-8", errors="replace")
         raise BootstrapError(f"API {method} {path} returned HTTP {exc.code}: {detail}") from exc
-    except URLError as exc:
-        raise BootstrapError(f"Could not reach the local API at {API_URL}: {exc.reason}") from exc
+    except (URLError, OSError) as exc:
+        reason = getattr(exc, "reason", str(exc))
+        raise BootstrapError(f"Could not reach the local API at {API_URL}: {reason}") from exc
 
 
 def _server_environment() -> dict[str, str]:
@@ -78,7 +80,7 @@ def _server_environment() -> dict[str, str]:
     codespace_name = environment.get("CODESPACE_NAME")
     if codespace_name:
         origins.append(f"https://{codespace_name}-3000.app.github.dev")
-    vercel_origin = environment.get("VERCEL_ORIGIN", "").strip().rstrip("/")
+    vercel_origin = environment.get("VERCEL_ORIGIN", DEFAULT_VERCEL_ORIGIN).strip().rstrip("/")
     if vercel_origin:
         if not vercel_origin.startswith("https://"):
             raise BootstrapError("VERCEL_ORIGIN must be the exact https:// origin shown by Vercel.")

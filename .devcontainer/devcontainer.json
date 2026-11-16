@@ -13,7 +13,7 @@
     "8000": {
       "label": "REVIO demonstration API",
       "onAutoForward": "notify",
-      "visibility": "private"
+      "visibility": "public"
     }
   }
 }

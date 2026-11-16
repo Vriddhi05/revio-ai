@@ -1,6 +1,7 @@
 import csv
 import io
 from collections.abc import Generator
+from pathlib import Path
 
 import pytest
 from fastapi.testclient import TestClient
@@ -9,6 +10,7 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
 from app.api.dependencies import get_db
+from app.core.config import Settings
 from app.db.base import Base
 from app.main import app
 from app.models import Tenant
@@ -203,6 +205,29 @@ def test_tenant_isolation_for_reviews_and_detail(client: TestClient) -> None:
     assert demo_list.json()["total"] == 0
     assert hidden_detail.status_code == 404
     assert other_list.json()["total"] == 1
+
+
+def test_demo_mode_limits_tenant_access_to_synthetic_workspace(client: TestClient, monkeypatch) -> None:
+    monkeypatch.setattr("app.api.dependencies.get_settings", lambda: Settings(app_env="demo"))
+
+    public_demo = client.get("/api/v1/reviews", headers={"X-Tenant-Slug": "revio-demo"})
+    other_workspace = client.get("/api/v1/reviews", headers={"X-Tenant-Slug": "separate-workspace"})
+
+    assert public_demo.status_code == 200
+    assert other_workspace.status_code == 404
+    assert other_workspace.json()["error"]["code"] == "tenant_not_found"
+
+
+def test_demo_mode_accepts_only_committed_synthetic_review_csv(client: TestClient, monkeypatch) -> None:
+    monkeypatch.setattr("app.api.v1.router.get_settings", lambda: Settings(app_env="demo"))
+    arbitrary = upload(client, make_csv([row(external_id="PUBLIC-CUSTOM")]))
+    sample_path = Path(__file__).resolve().parents[3] / "data" / "demo" / "reviews.csv"
+    sample = upload(client, sample_path.read_bytes())
+
+    assert arbitrary.status_code == 403
+    assert arbitrary.json()["error"]["code"] == "demo_upload_restricted"
+    assert sample.status_code == 201
+    assert sample.json()["accepted_rows"] == 45
 
 
 def test_review_pagination_filtering_and_status(client: TestClient) -> None:

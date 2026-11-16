@@ -1,3 +1,4 @@
+import hashlib
 import json
 import logging
 from datetime import datetime, timezone
@@ -20,6 +21,14 @@ from app.services.knowledge_vectors import get_store
 router = APIRouter(prefix="/api/v1/knowledge", tags=["knowledge"])
 logger = logging.getLogger(__name__)
 REPO_ROOT = Path(__file__).resolve().parents[5]
+DEMO_POLICY_FILENAMES = {
+    "booking-cancellations.md",
+    "delivery-delays.md",
+    "product-returns.md",
+    "restaurant-service-recovery.md",
+    "service-escalation.md",
+    "upi-refunds.md",
+}
 
 
 def _new_document(tenant_id: str, extracted, title: str | None, version: int) -> KnowledgeDocument:
@@ -70,6 +79,57 @@ def _not_found() -> HTTPException:
     return HTTPException(status_code=404, detail={"code": "knowledge_document_not_found", "message": "Knowledge document not found."})
 
 
+def _enforce_demo_policy_upload(content: bytes) -> None:
+    if not get_settings().demo_mode:
+        return
+    source_dir = REPO_ROOT / "data" / "demo" / "knowledge"
+    try:
+        sources = {source.name: source for source in source_dir.glob("*.md")}
+        allowed_hashes = {
+            hashlib.sha256(sources[name].read_bytes()).digest()
+            for name in DEMO_POLICY_FILENAMES
+            if name in sources
+        }
+    except OSError as exc:
+        logger.exception("Committed synthetic policy files are unavailable in demo mode")
+        raise HTTPException(status_code=503, detail={"code": "demo_fixture_unavailable", "message": "Synthetic policy examples are temporarily unavailable."}) from exc
+    if len(allowed_hashes) != len(DEMO_POLICY_FILENAMES):
+        raise HTTPException(status_code=503, detail={"code": "demo_fixture_unavailable", "message": "Synthetic policy examples are temporarily unavailable."})
+    if hashlib.sha256(content).digest() not in allowed_hashes:
+        raise HTTPException(
+            status_code=403,
+            detail={"code": "demo_upload_restricted", "message": "The public demo accepts only the six committed synthetic policy examples; custom document uploads are disabled."},
+        )
+
+
+def _ensure_demo_reindex_is_allowed(document: KnowledgeDocument) -> None:
+    if get_settings().demo_mode:
+        if document.source_filename not in DEMO_POLICY_FILENAMES or not document.title.startswith("DEMO / SYNTHETIC DATA"):
+            raise HTTPException(
+                status_code=403,
+                detail={"code": "demo_document_management_disabled", "message": "Only the six committed synthetic policy examples can be reindexed in the public demo."},
+            )
+        source = REPO_ROOT / "data" / "demo" / "knowledge" / document.source_filename
+        try:
+            fixture = extract_document(source.name, source.read_bytes())
+        except (OSError, DocumentError) as exc:
+            logger.exception("Committed synthetic policy fixture is unavailable during reindex")
+            raise HTTPException(status_code=503, detail={"code": "demo_fixture_unavailable", "message": "Synthetic policy examples are temporarily unavailable."}) from exc
+        if fixture.content_sha256 != document.content_sha256:
+            raise HTTPException(
+                status_code=403,
+                detail={"code": "demo_document_management_disabled", "message": "Only the six committed synthetic policy examples can be reindexed in the public demo."},
+            )
+
+
+def _ensure_demo_document_deletion_is_disabled() -> None:
+    if get_settings().demo_mode:
+        raise HTTPException(
+            status_code=403,
+            detail={"code": "demo_document_management_disabled", "message": "Document deletion is disabled in the public synthetic demo."},
+        )
+
+
 @router.post("/documents", response_model=KnowledgeDocumentOut, status_code=202)
 async def upload_knowledge_document(
     background_tasks: BackgroundTasks,
@@ -80,6 +140,9 @@ async def upload_knowledge_document(
 ) -> KnowledgeDocumentOut:
     settings = get_settings()
     content = await file.read(settings.knowledge_upload_max_bytes + 1)
+    if len(content) > settings.knowledge_upload_max_bytes:
+        raise HTTPException(status_code=413, detail={"code": "document_too_large", "message": f"Documents must be {settings.knowledge_upload_max_bytes // (1024 * 1024)} MB or smaller."})
+    _enforce_demo_policy_upload(content)
     try:
         extracted = extract_document(file.filename, content)
     except DocumentError as exc:
@@ -102,7 +165,10 @@ async def upload_knowledge_document(
             KnowledgeDocument.source_key == extracted.source_key,
         )
     ) or 0
-    document = _new_document(tenant.id, extracted, title, current_version + 1)
+    safe_title = title
+    if settings.demo_mode:
+        safe_title = f"DEMO / SYNTHETIC DATA — {title or extracted.title}"
+    document = _new_document(tenant.id, extracted, safe_title, current_version + 1)
     db.add(document)
     try:
         db.commit()
@@ -201,6 +267,7 @@ def get_knowledge_document(document_id: str, tenant: CurrentTenant, db: DbSessio
 
 @router.delete("/documents/{document_id}", status_code=204)
 def delete_knowledge_document(document_id: str, tenant: CurrentTenant, db: DbSession) -> None:
+    _ensure_demo_document_deletion_is_disabled()
     document = db.scalar(
         select(KnowledgeDocument).where(
             KnowledgeDocument.id == document_id,
@@ -236,6 +303,7 @@ def reindex_knowledge_document(
     )
     if document is None:
         raise _not_found()
+    _ensure_demo_reindex_is_allowed(document)
     if document.status == "processing":
         raise HTTPException(status_code=409, detail={"code": "document_processing", "message": "This document is already processing."})
     document.status = "processing"

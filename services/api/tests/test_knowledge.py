@@ -1,5 +1,6 @@
 import json
 from collections.abc import Generator
+from pathlib import Path
 
 import pytest
 from fastapi.testclient import TestClient
@@ -8,6 +9,7 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
 from app.api.dependencies import get_db
+from app.core.config import Settings
 from app.db.base import Base
 from app.db.init_db import recover_interrupted_knowledge_documents
 from app.main import app
@@ -314,3 +316,50 @@ def test_demo_policy_seed_is_idempotent_and_restricted_to_demo_tenant(kb_client,
     assert second.json()["already_present"] == 6
     assert all(document["title"].startswith("DEMO / SYNTHETIC DATA") for document in first.json()["documents"])
     assert other.status_code == 403
+
+
+def test_demo_mode_accepts_only_committed_synthetic_policy_documents(kb_client, monkeypatch) -> None:
+    client, _ = kb_client
+    monkeypatch.setattr("app.api.v1.knowledge.get_settings", lambda: Settings(app_env="demo"))
+    monkeypatch.setattr("app.api.v1.knowledge.index_document", lambda *_args, **_kwargs: None)
+    arbitrary = client.post(
+        "/api/v1/knowledge/documents",
+        files={"file": ("private-policy.md", b"A private policy supplied by an anonymous user.", "text/markdown")},
+    )
+    sample_path = Path(__file__).resolve().parents[3] / "data" / "demo" / "knowledge" / "upi-refunds.md"
+    sample = client.post(
+        "/api/v1/knowledge/documents",
+        files={"file": (sample_path.name, sample_path.read_bytes(), "text/markdown")},
+    )
+
+    assert arbitrary.status_code == 403
+    assert arbitrary.json()["error"]["code"] == "demo_upload_restricted"
+    assert sample.status_code == 202
+    assert sample.json()["source_filename"] == "upi-refunds.md"
+    assert sample.json()["title"].startswith("DEMO / SYNTHETIC DATA")
+
+
+def test_demo_mode_allows_only_committed_fixture_reindex_and_blocks_delete(kb_client, monkeypatch) -> None:
+    client, TestSession = kb_client
+    monkeypatch.setattr("app.api.v1.knowledge.get_settings", lambda: Settings(app_env="demo"))
+    monkeypatch.setattr("app.api.v1.knowledge.index_document", lambda *_args, **_kwargs: None)
+    seeded = client.post("/api/v1/knowledge/demo-documents", json={})
+    assert seeded.status_code == 202
+    seeded_documents = client.get("/api/v1/knowledge/documents").json()
+    fixture = next(item for item in seeded_documents if item["source_filename"] == "upi-refunds.md")
+    _, arbitrary_id = add_document(TestSession, filename="private-policy.md")
+    with TestSession() as db:
+        failed_fixture = db.get(KnowledgeDocument, fixture["id"])
+        failed_fixture.status = "failed"
+        db.commit()
+
+    deleted = client.delete(f"/api/v1/knowledge/documents/{fixture['id']}")
+    fixture_reindex = client.post(f"/api/v1/knowledge/documents/{fixture['id']}/reindex")
+    arbitrary_reindex = client.post(f"/api/v1/knowledge/documents/{arbitrary_id}/reindex")
+
+    assert deleted.status_code == 403
+    assert fixture_reindex.status_code == 202
+    assert fixture_reindex.json()["status"] == "processing"
+    assert arbitrary_reindex.status_code == 403
+    assert deleted.json()["error"]["code"] == "demo_document_management_disabled"
+    assert arbitrary_reindex.json()["error"]["code"] == "demo_document_management_disabled"

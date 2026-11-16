@@ -67,8 +67,8 @@
       }
     },
     "latency_ms": {
-      "median": 0.018,
-      "p95": 0.052,
+      "median": 0.044,
+      "p95": 0.09,
       "measurement": "per-record wall-clock classification call in the current local environment"
     }
   },
@@ -160,5 +160,6 @@
     "Confidence and rule-strength values are not calibrated probabilities.",
     "Measurements apply only to this local environment and the model/provider recorded above.",
     "The optional semantic approach was only run if explicitly requested; no unavailable model result is imputed."
-  ]
+  ],
+  "recorded_on": "2026-11-17"
 }

@@ -143,7 +143,25 @@ def _preview_out(filename: str, preview) -> ImportPreviewOut:
 async def _read_csv(file: UploadFile) -> tuple[str, bytes]:
     filename = Path(file.filename or "reviews.csv").name[:255]
     content = await file.read(10 * 1024 * 1024 + 1)
+    if len(content) > 10 * 1024 * 1024:
+        raise HTTPException(status_code=413, detail={"code": "csv_too_large", "message": "CSV files must be 10 MB or smaller."})
     return filename, content
+
+
+def _enforce_demo_csv(content: bytes) -> None:
+    if not get_settings().demo_mode:
+        return
+    sample_path = Path(__file__).resolve().parents[5] / "data" / "demo" / "reviews.csv"
+    try:
+        sample_hash = hashlib.sha256(sample_path.read_bytes()).digest()
+    except OSError as exc:
+        logger.exception("Committed synthetic review CSV is unavailable in demo mode")
+        raise HTTPException(status_code=503, detail={"code": "demo_fixture_unavailable", "message": "The synthetic review sample is temporarily unavailable."}) from exc
+    if hashlib.sha256(content).digest() != sample_hash:
+        raise HTTPException(
+            status_code=403,
+            detail={"code": "demo_upload_restricted", "message": "The public demo accepts only the committed synthetic India review CSV; custom review uploads are disabled."},
+        )
 
 
 @router.post("/reviews/imports/preview", response_model=ImportPreviewOut)
@@ -153,6 +171,7 @@ async def preview_reviews_csv(
     file: UploadFile = File(...),
 ) -> ImportPreviewOut:
     filename, content = await _read_csv(file)
+    _enforce_demo_csv(content)
     try:
         preview = mark_duplicates(parse_review_csv(content), db, tenant.id)
     except CsvImportError as exc:
@@ -167,6 +186,7 @@ async def import_reviews_csv(
     file: UploadFile = File(...),
 ) -> ImportJobOut:
     filename, content = await _read_csv(file)
+    _enforce_demo_csv(content)
     try:
         preview = mark_duplicates(parse_review_csv(content), db, tenant.id)
     except CsvImportError as exc:

@@ -2,15 +2,17 @@
 
 ## Current status
 
-The owner reports that the Next.js frontend was deployed to Vercel Hobby and provided the URLs below. Verification was performed on 16 November 2026. The public frontend returned HTTP 200 for all six routes listed below. A browser rendered the Overview shell, but its workspace API request showed `Failed to fetch`; its metric cards and review content were unavailable. The frontend’s public JavaScript bundle contains the configured Codespaces API origin. A public request to that API origin’s `/health` returned HTTP 404 from the Codespaces tunnel, and the CORS preflight also returned HTTP 404. The API workflow, retrieval, draft, approval, and CORS are therefore **not verified on the public deployment**. Restart the existing API with `VERCEL_ORIGIN` set, then repeat the checks in this document.
+The owner reports that the Next.js frontend was deployed to Vercel Hobby and provided the URLs below. On 17 November 2026, direct HTTP checks returned 200 for all six frontend routes. The previously observed browser showed the Overview shell with `Failed to fetch`. In the latest API check, the Codespaces `/health` request returned HTTP 302 to GitHub sign-in and the CORS preflight returned HTTP 401 with `WWW-Authenticate: tunnel`. This indicates that the forwarded port is currently behind GitHub tunnel authentication; it is a reachability/port-visibility failure before FastAPI, so it does not verify or disprove the FastAPI CORS configuration. The backend, retrieval, draft, and approval workflow are **not verified on the public deployment**. Reopen port 8000 to Public in the existing Codespace, pull the latest `main`, and restart with the bootstrap before repeating these checks.
 
 - Frontend: <https://revio-ai-smoky.vercel.app>
 - Codespaces API origin: <https://expert-space-orbit-5vqwjw76v5p37p95-8000.app.github.dev>
-- API health check: <https://expert-space-orbit-5vqwjw76v5p37p95-8000.app.github.dev/health> (HTTP 404 at the time checked)
+- API health check: <https://expert-space-orbit-5vqwjw76v5p37p95-8000.app.github.dev/health> (HTTP 302 to GitHub sign-in at the latest check)
 
 No paid hosting resource or trial was intentionally created. The owner’s current quota and actual account billing are not independently verified. The Vercel Hobby plan is restricted to personal, non-commercial use; use only if this assessment demo qualifies under those terms. Only synthetic data may be exposed.
 
 Do not upload real customer reviews, private business policies, credentials, or personal information. The X-Tenant-Slug header selects the demo workspace; it is not authentication or authorization. A public forwarded API port allows anyone with its URL to reach the unauthenticated demo API. REVIO is not production-secure.
+
+The latest local source adds `APP_ENV=demo` safeguards for this unauthenticated public demonstration: only `revio-demo` can be selected; review CSV preview/import accepts only the exact committed fictional India CSV; document uploads accept only the six exact synthetic Markdown fixtures; document deletion is disabled; and reindex is limited to those fixtures by filename, title, and normalized content hash. Fixture reindex remains available so startup can restore a lost vector index. The devcontainer now defaults port 8000 to `public` as previously authorized. These changes must be pulled and restarted in the Codespace before they protect the submitted API URL; its existing forwarded-port visibility may also need to be updated once in the Ports panel.
 
 ## Chosen zero-budget topology
 
@@ -19,7 +21,7 @@ Do not upload real customer reviews, private business policies, credentials, or 
 | Next.js frontend | Vercel Hobby | Import Vriddhi05/revio-ai; root apps/web; set NEXT_PUBLIC_API_BASE_URL to the public API origin | Free usage is capped; Hobby is for personal, non-commercial use. Do not start a Pro trial. |
 | FastAPI, SQLite, vector index, LangGraph | GitHub Codespaces Free on a personal account | Use .devcontainer/devcontainer.json; it sets no minimum machine size, so GitHub can offer the types available to the account | GitHub Free includes 120 Codespaces core-hours and 15 GB-month storage for personal accounts. Compute use depends on the selected core count. Confirm remaining quota before creation. |
 | Reviews and knowledge data | SQLite files in the Codespace workspace | Startup applies Alembic, synchronizes the 45 managed fictional reviews, and restores/reindexes the six committed policy examples | Files survive Codespace stop/start but are lost if the Codespace is deleted or rebuilt from scratch. The committed fictional dataset can be reconstructed; user uploads are temporary. |
-| Embedding model | intfloat/multilingual-e5-small, pinned revision in the evaluation report | Downloaded from Hugging Face during first policy indexing and cached in the Codespace home directory | The recorded local evaluation measured 470.44 MB of model files and 648.07 MB process RSS after load. A separate full-API diagnostic with multilingual MiniLM L12 measured 689.89 MB after query embedding. These are local measurements, not Codespaces benchmarks. Choose an available machine with enough memory for the model and API; startup may fail on a constrained machine. |
+| Embedding model | intfloat/multilingual-e5-small, pinned revision in the evaluation report | Downloaded from Hugging Face during first policy indexing and cached in the Codespace home directory | The 17 Nov local rerun measured 470.44 MB model files and 426.25 MB process RSS after load; a prior actual run measured 648.07 MB. A separate full-API diagnostic with multilingual MiniLM L12 measured 689.89 MB after query embedding. These variable local measurements are not Codespaces benchmarks. Choose a machine with sufficient memory; startup may fail on a constrained machine. |
 
 This is temporary assessment compute, not persistent public hosting. GitHub documents a 12-hour maximum lifetime and a default 30-minute idle timeout for Codespaces. Public traffic is not a promised keep-alive mechanism. Keep the Codespace active while presenting and restart it manually if it stops. Its forwarded port URL belongs to that Codespace; avoid creating a replacement unless necessary because the API origin will change.
 
@@ -27,7 +29,7 @@ Vercel Hobby terms are limited to personal, non-commercial use. Use this route o
 
 ## Why Render Free is not selected
 
-Render Free documents 512 MB RAM, no persistent disk, and loss of local files on restart, redeploy, or idle spin-down. It stops after 15 minutes without inbound traffic and takes about a minute to restart. REVIO’s selected E5 model alone measured 648.07 MB RSS in the local retrieval evaluation, already above the published limit. The full API plus the smaller multilingual MiniLM L12 measured 689.89 MB after a query in this environment, also above the limit. These local readings do not predict Render’s exact Linux RSS; they do show that the current implementation cannot be shown to fit safely in 512 MB. Do not deploy this API to Render Free for the assessment.
+Render Free documents 512 MB RAM, no persistent disk, and loss of local files on restart, redeploy, or idle spin-down. It stops after 15 minutes without inbound traffic and takes about a minute to restart. REVIO's measured E5 process RSS varied from 426.25 MB on the 17 Nov rerun to 648.07 MB in a prior run. The full API plus multilingual MiniLM L12 measured 689.89 MB after a query in this environment. These local readings do not predict Render's exact Linux RSS; they do show that the current implementation cannot be shown to fit safely in 512 MB. Do not deploy this API to Render Free for the assessment.
 
 The 45 synthetic reviews are synchronized idempotently by FastAPI startup. The existing demo-policy endpoint adds the six committed files idempotently; this repository’s Codespaces bootstrap calls that endpoint and checks/reindexes missing SQLite vector rows. On a completely reset filesystem, this can recreate reviews, policies, and the vector index. It does not solve Render’s model memory limit, or repeated model download and cold indexing. See [Render’s free-tier limits](https://render.com/docs/free).
 
@@ -53,7 +55,7 @@ See [GitHub’s included product usage](https://docs.github.com/en/billing/refer
        curl -fsS -H 'X-Tenant-Slug: revio-demo' http://127.0.0.1:8000/api/v1/knowledge/documents
 
    Health should return {"status":"ok","database":"ok"}. The document list should contain six titles beginning DEMO / SYNTHETIC DATA with ready status.
-5. Open the Ports tab in the Codespaces editor. Port 8000 is private by default. When ready to share the demo, change only port 8000 to Public and copy its URL. The expected format is https://<codespace-name>-8000.app.github.dev; use the exact URL displayed by GitHub. A public port is anonymously reachable; see [GitHub’s port-forwarding documentation](https://docs.github.com/en/codespaces/developing-in-a-codespace/forwarding-ports-in-your-codespace).
+5. Open the Ports tab in the Codespaces editor and confirm port 8000 is Public. The latest `.devcontainer/devcontainer.json` sets this default, but an existing Codespace can retain the old Private setting until changed manually. Use the exact URL displayed by GitHub; the expected format is `https://<codespace-name>-8000.app.github.dev`. A public port is anonymously reachable; see [GitHub’s port-forwarding documentation](https://docs.github.com/en/codespaces/developing-in-a-codespace/forwarding-ports-in-your-codespace).
 6. From a new browser tab, check the API origin plus /health. Do not publish the frontend until this succeeds.
 
 ### If GitHub still shows “None” for every machine type
@@ -90,7 +92,17 @@ After the command completes, check `/health`, review count, document readiness, 
 
 ## Public review checklist after account setup
 
-Current public check results are recorded under **Current status** above. After restarting the API with the configured Vercel origin, repeat and record these checks before calling the public demo complete:
+Current public check results are recorded under **Current status** above. The remaining deployment action is in the existing Codespace: open the **Ports** panel, change port `8000` visibility to **Public**, then run this from its terminal:
+
+```bash
+cd /workspaces/revio-ai
+git pull --ff-only origin main
+services/api/.venv/bin/python services/api/scripts/codespaces_bootstrap.py restart
+```
+
+The committed bootstrap defaults `VERCEL_ORIGIN` to `https://revio-ai-smoky.vercel.app` and keeps the workspace SQLite/vector paths. It reapplies migrations and idempotently synchronizes synthetic fixtures. If it cannot stop the tracked API or restore the six indexed policies, it logs an error and must not be reported healthy. After restart, repeat GET `/health`, preflight, and the product checks below from an external browser. Do not make the port public if the public synthetic-only source revision has not been pulled.
+
+After restart, repeat and record these checks before calling the public demo complete:
 
 - API GET /health returns the database health response.
 - Overview, Reviews Inbox, Crisis Monitor, Location Analytics, Knowledge Base, and Response Studio load without uncaught browser errors.

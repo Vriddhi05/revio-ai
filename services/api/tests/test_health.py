@@ -1,3 +1,5 @@
+import json
+import runpy
 from pathlib import Path
 
 from sqlalchemy import func, select
@@ -29,6 +31,86 @@ def test_health_reports_database_connection() -> None:
     assert response.status_code == 200
     assert response.json() == {"status": "ok", "database": "ok"}
     assert cors_response.headers["access-control-allow-origin"] == "http://localhost:3000"
+
+
+def test_cors_preflight_allows_workspace_header_and_json_content_type() -> None:
+    with TestClient(app) as client:
+        response = client.options(
+            "/api/v1/analytics/summary",
+            headers={
+                "Origin": "http://localhost:3000",
+                "Access-Control-Request-Method": "GET",
+                "Access-Control-Request-Headers": "content-type,x-tenant-slug",
+            },
+        )
+
+    assert response.status_code == 200
+    assert response.headers["access-control-allow-origin"] == "http://localhost:3000"
+    assert "GET" in response.headers["access-control-allow-methods"]
+    allowed_headers = {header.strip().casefold() for header in response.headers["access-control-allow-headers"].split(",")}
+    assert {"content-type", "x-tenant-slug"} <= allowed_headers
+
+
+def test_codespaces_bootstrap_adds_exact_vercel_origin(monkeypatch) -> None:
+    monkeypatch.delenv("APP_ENV", raising=False)
+    monkeypatch.delenv("CORS_ALLOWED_ORIGINS", raising=False)
+    monkeypatch.delenv("CODESPACE_NAME", raising=False)
+    monkeypatch.delenv("VERCEL_ORIGIN", raising=False)
+    bootstrap_path = Path(__file__).resolve().parents[1] / "scripts" / "codespaces_bootstrap.py"
+    bootstrap = runpy.run_path(str(bootstrap_path))
+
+    environment = bootstrap["_server_environment"]()
+
+    assert environment["APP_ENV"] == "demo"
+    assert "https://revio-ai-smoky.vercel.app" in environment["CORS_ALLOWED_ORIGINS"].split(",")
+
+
+def test_codespaces_bootstrap_accepts_an_explicit_vercel_origin(monkeypatch) -> None:
+    monkeypatch.delenv("CORS_ALLOWED_ORIGINS", raising=False)
+    monkeypatch.delenv("CODESPACE_NAME", raising=False)
+    monkeypatch.setenv("VERCEL_ORIGIN", "https://preview.example")
+    bootstrap_path = Path(__file__).resolve().parents[1] / "scripts" / "codespaces_bootstrap.py"
+    bootstrap = runpy.run_path(str(bootstrap_path))
+
+    environment = bootstrap["_server_environment"]()
+
+    assert "https://preview.example" in environment["CORS_ALLOWED_ORIGINS"].split(",")
+
+
+def test_codespaces_bootstrap_rejects_non_https_vercel_origin(monkeypatch) -> None:
+    import pytest
+
+    monkeypatch.setenv("VERCEL_ORIGIN", "http://revio-ai-smoky.vercel.app")
+    bootstrap_path = Path(__file__).resolve().parents[1] / "scripts" / "codespaces_bootstrap.py"
+    bootstrap = runpy.run_path(str(bootstrap_path))
+
+    with pytest.raises(bootstrap["BootstrapError"], match="exact https:// origin"):
+        bootstrap["_server_environment"]()
+
+
+def test_codespaces_forwards_demo_api_port_public_by_default() -> None:
+    devcontainer_path = Path(__file__).resolve().parents[3] / ".devcontainer" / "devcontainer.json"
+    devcontainer = json.loads(devcontainer_path.read_text(encoding="utf-8"))
+
+    assert devcontainer["portsAttributes"]["8000"]["visibility"] == "public"
+
+
+def test_codespaces_bootstrap_stop_handles_socket_reset_after_shutdown(monkeypatch, tmp_path) -> None:
+    bootstrap_path = Path(__file__).resolve().parents[1] / "scripts" / "codespaces_bootstrap.py"
+    bootstrap = runpy.run_path(str(bootstrap_path))
+    pid_file = tmp_path / "api.pid"
+    pid_file.write_text("12345\n", encoding="utf-8")
+    bootstrap_globals = bootstrap["_stop_api"].__globals__
+    bootstrap_globals["PID_FILE"] = pid_file
+    monkeypatch.setattr(bootstrap["os"], "kill", lambda *_args: None)
+
+    def connection_reset(*_args, **_kwargs):
+        raise ConnectionResetError("peer closed during shutdown")
+
+    bootstrap_globals["urlopen"] = connection_reset
+    bootstrap["_stop_api"]()
+
+    assert not pid_file.exists()
 
 
 def test_cors_origins_are_explicit_and_normalized() -> None:

@@ -26,22 +26,24 @@ The comparison candidate was `sentence-transformers/paraphrase-multilingual-Mini
 
 The reproducible, fictional evaluation set is `data/evaluation/knowledge_retrieval.jsonl`: 30 questions with known relevant source passages and six questions with no relevant source. It covers Indian English, Hindi, and Hinglish. The corpus contains six synthetic Indian business-policy documents and was chunked independently for each model. Run `services/api/.venv/Scripts/python.exe services/api/scripts/evaluate_knowledge.py --model both` from the repository root (or `scripts/evaluate_knowledge.py --model both` from `services/api`). It writes the measured output to `data/evaluation/knowledge_retrieval_results.json`.
 
-The latest recorded run used CPU, the persistent exact-cosine SQLite backend on Windows, 13 E5 passages and 24 MiniLM passages. Retrieval latency includes query embedding plus a warmed local vector lookup; it excludes API and network overhead.
+The 17 November 2026 verification rerun used CPU, the persistent exact-cosine SQLite backend on Windows, 13 E5 passages and 24 MiniLM passages. Retrieval latency includes query embedding plus a warmed local vector lookup; it excludes API and network overhead. The complete run is in `data/evaluation/knowledge_retrieval_results.json`.
 
 | Measurement | multilingual-e5-small | multilingual MiniLM-L12-v2 |
 | --- | ---: | ---: |
 | Recall@1 / @3 / @5 | 53.33% / 80.00% / 100.00% | 40.00% / 66.67% / 73.33% |
 | Mean Reciprocal Rank | 0.7061 | 0.5278 |
 | Thresholded Recall@5 | 93.33% | 66.67% |
-| Median / p95 warmed query + retrieval | 25.19 / 32.54 ms | 22.10 / 29.14 ms |
+| Median / p95 warmed query + retrieval | 52.23 / 163.81 ms | 55.36 / 152.71 ms |
 | Model snapshot files on disk | 470.44 MB | 457.51 MB |
-| Process RSS after model load | 648.07 MB | 451.30 MB |
-| Model load time in this run | 1.02 s | 0.87 s |
+| Process RSS after model load in rerun | 426.25 MB | 436.12 MB |
+| Model load time in rerun | 5.29 s | 3.30 s |
 | Observed max sequence / passage tokens | 512 / 214 | 128 / 128 |
 | No-match questions abstained / false positives | 6 / 0 | 6 / 0 |
 | Tenant probe returned another tenant's vectors | No | No |
 
 At the E5 threshold selected by balanced accuracy on this same synthetic evaluation set (`0.822045`), all 30 positive questions had at least one accepted result, six of six no-match questions abstained, and thresholded Recall@5 was 93.33%. The MiniLM threshold was `0.415487`, with thresholded Recall@5 of 66.67%. These thresholds are not independently calibrated. Evaluation data informed the defaults and must be replaced or recalibrated on representative, independently labeled business queries before production use.
+
+The prior measured E5 process RSS was 648.07 MB and MiniLM RSS was 451.30 MB; the latest rerun measured 426.25 MB and 436.12 MB respectively. RSS and warmed latency varied between runs on the same local Windows CPU. For constrained-host decisions, use the highest observed process footprint until measured under the target hosting environment; no cloud-host model benchmark is claimed.
 
 The exact metrics, pinned revisions, per-question ranks/scores, model sizes, RSS, threshold behavior, and limitations are recorded in `data/evaluation/knowledge_retrieval_results.json`. Results vary with hardware, operating system, package/model revisions, vector backend, and corpus. The dataset is small and curated; it does not establish a broad Hindi or Hinglish benchmark.
 
@@ -60,7 +62,7 @@ In this verified Windows/Python 3.12 environment, local Chroma vector writes sta
 - Uploaded document text is untrusted. A heuristic flags a small set of instruction-like phrases for display/metadata, but this is not prompt-injection protection. This milestone does not pass retrieved text to an LLM. Any future generation workflow must treat cited passages as untrusted evidence, delimit and instruct against following source instructions, validate outputs, and require human review.
 - Search abstains when no ready document exists or no candidate reaches the configured similarity threshold. Similarity is not factual confidence, and a high score does not prove a policy is accurate, current, legal, or applicable.
 - No OCR, live integrations, LLM response generation, LangGraph response workflow, or human approval flow was added in this milestone.
-- Local model files occupy about 470 MB on disk for E5; the observed model-load process RSS was about 648 MB on this machine. These figures exclude a production server's other services and vary by runtime.
+- Local model files occupy about 470 MB on disk for E5; model-load process RSS measured 426 MB on the 17 Nov rerun and 648 MB in an earlier run on this machine. These figures exclude the rest of a production server and vary by runtime.
 - No hosted embedding or generation provider is called by this milestone. Runtime cost is local compute and storage, not a measured zero-cost production service.
 
 ## Reproduction

@@ -68,6 +68,10 @@ class Settings(BaseSettings):
             if origin.strip()
         ))
 
+    @property
+    def demo_mode(self) -> bool:
+        return self.app_env.strip().casefold() == "demo"
+
 
 @lru_cache
 def get_settings() -> Settings:

@@ -1,6 +1,6 @@
 # REVIO AI Opportunity Report
 
-**Assessment status:** Demonstration product, not a production service. This report uses the available REVIO implementation and its committed fictional evaluation sets. No real customer data, live review-source connection, or hosted LLM call was used. The public frontend is deployed at <https://revio-ai-smoky.vercel.app>; as of 16 November 2026 its Overview showed `Failed to fetch`, while the public Codespaces API `/health` request returned HTTP 404 from the tunnel. Public API, CORS, and end-to-end AI workflow are not yet verified. It covers the AI opportunity and evidence categories specified in the current Cynbit submission request; a separate assessment rubric was not provided.
+**Assessment status (17 November 2026):** Demonstration product, not a production service. This report uses the available REVIO implementation and its committed fictional evaluation sets. No real customer data, live review-source connection, or hosted LLM call was used. The public frontend is deployed at <https://revio-ai-smoky.vercel.app>; its six routes returned HTTP 200 in the latest direct check. The Codespaces API <https://expert-space-orbit-5vqwjw76v5p37p95-8000.app.github.dev> redirected `/health` to GitHub sign-in (302), and its Vercel-origin preflight returned tunnel HTTP 401. Public API, CORS, and end-to-end AI workflow remain unverified. The latest local source adds demo-only safeguards but is not deployed to the Codespace. This report covers the AI opportunity and evidence categories specified in the current Cynbit submission request; a separate assessment rubric was not provided.
 
 ## Opportunity
 
@@ -30,6 +30,8 @@ The optional pinned MuRIL model reached 66.67% accuracy and 59.69% macro F1 on t
 
 Pinned `intfloat/multilingual-e5-small` was measured on 30 known-relevance questions plus 6 no-match questions over six fictional policy documents. It achieved Recall@1/3/5 of **53.33% / 80.00% / 100.00%**, MRR **0.7061**, thresholded Recall@5 **93.33%**, and abstained on all 6 no-match queries with 0 false positives. The selected threshold was tuned on the same set and is not independently calibrated. On the measured Windows CPU environment, warmed query embedding plus vector retrieval was **25.19 ms median / 32.54 ms p95**; model load process RSS was **648.07 MB** and model snapshot disk size was **470.44 MB**.
 
+A verification rerun on 17 November 2026 reproduced the retrieval ranks and abstention counts. On that run, warmed median/p95 latency was **52.23/163.81 ms** and process RSS after model load was **426.25 MB** (model files remained **470.44 MB**). The earlier 648.07 MB RSS observation is retained as a higher observed memory run; neither reading is a cloud benchmark. The corresponding MiniLM rerun measured 55.36/152.71 ms and 436.12 MB RSS. Run-to-run latency and RSS vary; use the higher observed footprint when judging constrained hosting. Full measured outputs are in [`data/evaluation/knowledge_retrieval_results.json`](../data/evaluation/knowledge_retrieval_results.json).
+
 The retrieval results are useful for comparing the two local candidates in this curated dataset. They do not establish broad Hindi/Hinglish coverage, factual policy correctness, or cloud-host performance. Full per-query metrics and methodology are in [`knowledge-retrieval-report.md`](knowledge-retrieval-report.md) and [`data/evaluation/knowledge_retrieval_results.json`](../data/evaluation/knowledge_retrieval_results.json).
 
 ### Response generation
@@ -39,6 +41,7 @@ The response workflow's quality has not been benchmarked. The live M5 run used t
 ## Guardrails and limitations
 
 - The 45 review examples and six policy documents are fictional and labeled `DEMO / SYNTHETIC DATA`.
+- In local `APP_ENV=demo`, writes are limited to the fixed `revio-demo` tenant and exact committed synthetic CSV/policy fixtures; delete is disabled and reindex is limited to verified fixtures. These source safeguards must be active on the Codespace before relying on them for the public URL.
 - Review text and policy passages are untrusted input. Prompt-injection phrase flags are heuristic advisories, not comprehensive protection.
 - Response checks look for selected unsupported amounts, timelines, and commitments. They are not semantic factuality verification. A cited passage may be outdated, inapplicable, or wrong.
 - Missing or low-relevance evidence leads to a cautious draft that avoids policy promises; a human must still verify the wording and evidence.
